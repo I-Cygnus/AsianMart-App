@@ -1,0 +1,116 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code
+.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# ── AI Tools ──────────────────────────────────────────────────────────────────
+# Claude Code
+.claude/
+CLAUDE.md
+.claude_files/
+
+# OpenAI Codex / Codex CLI
+.codex/
+codex.json
+codex_history/
+
+# Cursor AI
+.cursor/
+.cursorignore
+.cursorindexingignore
+
+# GitHub Copilot
+.copilot/
+.github/copilot-instructions.md
+
+# General AI context / prompt files
+*.prompt
+*.system-prompt
+ai_context/
+
+# ── Secrets & Security ────────────────────────────────────────────────────────
+# Environment variables
+.env
+.env.*
+!.env.example
+*.env
+
+# API keys / credentials files
+secrets.json
+secrets.yaml
+secrets.yml
+credentials.json
+credentials.yaml
+credentials.yml
+service-account*.json
+*-service-account.json
+*-credentials.json
+
+# Firebase
+google-services.json
+GoogleService-Info.plist
+firebase_options.dart
+
+# Key stores / certificates
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+*.cer
+*.crt
+
+# Android signing config
+key.properties
+android/key.properties
+
+# iOS signing
+*.mobileprovision
+*.xcarchive/
+
+# SSH keys
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+known_hosts
