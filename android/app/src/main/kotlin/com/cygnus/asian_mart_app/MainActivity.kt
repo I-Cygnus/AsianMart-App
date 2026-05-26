@@ -1,4 +1,4 @@
-package com.example.asian_mart_app
+package com.cygnus.asian_mart_app
 
 import io.flutter.embedding.android.FlutterActivity
 
