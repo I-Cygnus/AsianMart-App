@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:asian_mart_app/core/l10n/app_localizations.dart';
 import 'package:asian_mart_app/core/state/app_controller.dart';
+import 'package:asian_mart_app/core/theme/app_theme.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key, required this.controller});
@@ -11,7 +12,8 @@ class AuthPage extends StatefulWidget {
   State<AuthPage> createState() => _AuthPageState();
 }
 
-class _AuthPageState extends State<AuthPage> with SingleTickerProviderStateMixin {
+class _AuthPageState extends State<AuthPage>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final _loginEmailController = TextEditingController();
   final _loginPasswordController = TextEditingController();
@@ -44,11 +46,10 @@ class _AuthPageState extends State<AuthPage> with SingleTickerProviderStateMixin
       email: _loginEmailController.text.trim(),
       password: _loginPasswordController.text,
     );
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
       return;
     }
     Navigator.of(context).pop();
@@ -62,11 +63,10 @@ class _AuthPageState extends State<AuthPage> with SingleTickerProviderStateMixin
       name: _signupNameController.text.trim(),
       phone: _signupPhoneController.text.trim(),
     );
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
       return;
     }
     Navigator.of(context).pop();
@@ -81,65 +81,120 @@ class _AuthPageState extends State<AuthPage> with SingleTickerProviderStateMixin
       animation: controller,
       builder: (context, _) {
         return Scaffold(
+          backgroundColor: AppTheme.background,
           appBar: AppBar(
-            title: Text(l10n.signIn),
-            bottom: TabBar(
-              controller: _tabController,
-              tabs: [
-                Tab(text: l10n.signIn),
-                Tab(text: l10n.signUp),
-              ],
+            backgroundColor: AppTheme.background,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.close_rounded, color: AppTheme.textPrimary),
+              onPressed: () => Navigator.of(context).pop(),
             ),
           ),
-          body: TabBarView(
-            controller: _tabController,
+          body: Column(
             children: [
-              _AuthForm(
-                title: l10n.signIn,
-                subtitle: l10n.loginSubtitle,
-                fields: [
-                  _FieldConfig(
-                    controller: _loginEmailController,
-                    label: l10n.emailLabel,
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  _FieldConfig(
-                    controller: _loginPasswordController,
-                    label: l10n.passwordLabel,
-                    obscureText: true,
-                  ),
-                ],
-                loading: controller.authLoading,
-                actionLabel: l10n.signIn,
-                onSubmit: _login,
+              // Logo / Brand area
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: const Icon(
+                        Icons.storefront_rounded,
+                        color: Colors.white,
+                        size: 36,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Asian Mart',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textPrimary,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      '신선한 아시안 식품을 집에서',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              _AuthForm(
-                title: l10n.signUp,
-                subtitle: l10n.signupSubtitle,
-                fields: [
-                  _FieldConfig(
-                    controller: _signupEmailController,
-                    label: l10n.emailLabel,
-                    keyboardType: TextInputType.emailAddress,
+
+              // Tab bar
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 24),
+                decoration: BoxDecoration(
+                  color: AppTheme.imagePlaceholder,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  indicator: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  _FieldConfig(
-                    controller: _signupPasswordController,
-                    label: l10n.passwordLabel,
-                    obscureText: true,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  dividerColor: Colors.transparent,
+                  labelColor: AppTheme.textPrimary,
+                  unselectedLabelColor: AppTheme.textTertiary,
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
                   ),
-                  _FieldConfig(
-                    controller: _signupNameController,
-                    label: l10n.nameLabel,
+                  unselectedLabelStyle: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
                   ),
-                  _FieldConfig(
-                    controller: _signupPhoneController,
-                    label: l10n.phoneLabel,
-                    keyboardType: TextInputType.phone,
-                  ),
-                ],
-                loading: controller.authLoading,
-                actionLabel: l10n.signUp,
-                onSubmit: _signup,
+                  padding: const EdgeInsets.all(4),
+                  tabs: [
+                    Tab(text: l10n.signIn),
+                    Tab(text: l10n.signUp),
+                  ],
+                ),
+              ),
+
+              // Forms
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _LoginForm(
+                      emailController: _loginEmailController,
+                      passwordController: _loginPasswordController,
+                      loading: controller.authLoading,
+                      onSubmit: _login,
+                      l10n: l10n,
+                    ),
+                    _SignupForm(
+                      emailController: _signupEmailController,
+                      passwordController: _signupPasswordController,
+                      nameController: _signupNameController,
+                      phoneController: _signupPhoneController,
+                      loading: controller.authLoading,
+                      onSubmit: _signup,
+                      l10n: l10n,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -149,70 +204,230 @@ class _AuthPageState extends State<AuthPage> with SingleTickerProviderStateMixin
   }
 }
 
-class _AuthForm extends StatelessWidget {
-  const _AuthForm({
-    required this.title,
-    required this.subtitle,
-    required this.fields,
+// ── Login Form ────────────────────────────────────────────────────────────────
+
+class _LoginForm extends StatelessWidget {
+  const _LoginForm({
+    required this.emailController,
+    required this.passwordController,
     required this.loading,
-    required this.actionLabel,
     required this.onSubmit,
+    required this.l10n,
   });
 
-  final String title;
-  final String subtitle;
-  final List<_FieldConfig> fields;
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
   final bool loading;
-  final String actionLabel;
   final Future<void> Function() onSubmit;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
       children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.headlineMedium,
+        _AuthField(
+          controller: emailController,
+          label: l10n.emailLabel,
+          hint: 'example@email.com',
+          keyboardType: TextInputType.emailAddress,
+          prefixIcon: Icons.email_outlined,
         ),
-        const SizedBox(height: 8),
-        Text(subtitle),
-        const SizedBox(height: 20),
-        for (final field in fields) ...[
-          TextField(
-            controller: field.controller,
-            keyboardType: field.keyboardType,
-            obscureText: field.obscureText,
-            decoration: InputDecoration(
-              labelText: field.label,
-              border: const OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-        ],
-        const SizedBox(height: 12),
-        FilledButton(
-          onPressed: loading ? null : onSubmit,
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(52),
-          ),
-          child: Text(loading ? '처리 중...' : actionLabel),
+        const SizedBox(height: 14),
+        _AuthField(
+          controller: passwordController,
+          label: l10n.passwordLabel,
+          hint: '비밀번호를 입력하세요',
+          obscureText: true,
+          prefixIcon: Icons.lock_outline_rounded,
+        ),
+        const SizedBox(height: 28),
+        _SubmitButton(
+          label: l10n.signIn,
+          loading: loading,
+          onPressed: onSubmit,
         ),
       ],
     );
   }
 }
 
-class _FieldConfig {
-  const _FieldConfig({
+// ── Signup Form ───────────────────────────────────────────────────────────────
+
+class _SignupForm extends StatelessWidget {
+  const _SignupForm({
+    required this.emailController,
+    required this.passwordController,
+    required this.nameController,
+    required this.phoneController,
+    required this.loading,
+    required this.onSubmit,
+    required this.l10n,
+  });
+
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
+  final TextEditingController nameController;
+  final TextEditingController phoneController;
+  final bool loading;
+  final Future<void> Function() onSubmit;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
+      children: [
+        _AuthField(
+          controller: emailController,
+          label: l10n.emailLabel,
+          hint: 'example@email.com',
+          keyboardType: TextInputType.emailAddress,
+          prefixIcon: Icons.email_outlined,
+        ),
+        const SizedBox(height: 14),
+        _AuthField(
+          controller: passwordController,
+          label: l10n.passwordLabel,
+          hint: '8자 이상 입력하세요',
+          obscureText: true,
+          prefixIcon: Icons.lock_outline_rounded,
+        ),
+        const SizedBox(height: 14),
+        _AuthField(
+          controller: nameController,
+          label: l10n.nameLabel,
+          hint: '이름을 입력하세요',
+          prefixIcon: Icons.person_outline_rounded,
+        ),
+        const SizedBox(height: 14),
+        _AuthField(
+          controller: phoneController,
+          label: l10n.phoneLabel,
+          hint: '010-0000-0000',
+          keyboardType: TextInputType.phone,
+          prefixIcon: Icons.phone_outlined,
+        ),
+        const SizedBox(height: 28),
+        _SubmitButton(
+          label: l10n.signUp,
+          loading: loading,
+          onPressed: onSubmit,
+        ),
+      ],
+    );
+  }
+}
+
+// ── Shared components ─────────────────────────────────────────────────────────
+
+class _AuthField extends StatelessWidget {
+  const _AuthField({
     required this.controller,
     required this.label,
+    required this.hint,
+    required this.prefixIcon,
     this.keyboardType,
     this.obscureText = false,
   });
 
   final TextEditingController controller;
   final String label;
+  final String hint;
+  final IconData prefixIcon;
   final TextInputType? keyboardType;
   final bool obscureText;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.border),
+          ),
+          child: TextField(
+            controller: controller,
+            keyboardType: keyboardType,
+            obscureText: obscureText,
+            style: const TextStyle(
+              fontSize: 15,
+              color: AppTheme.textPrimary,
+            ),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: const TextStyle(
+                color: AppTheme.textTertiary,
+                fontSize: 14,
+              ),
+              prefixIcon: Icon(
+                prefixIcon,
+                size: 20,
+                color: AppTheme.textTertiary,
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SubmitButton extends StatelessWidget {
+  const _SubmitButton({
+    required this.label,
+    required this.loading,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool loading;
+  final Future<void> Function() onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 54,
+      child: FilledButton(
+        onPressed: loading ? null : onPressed,
+        style: FilledButton.styleFrom(
+          backgroundColor: AppTheme.primary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        child: loading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              )
+            : Text(label),
+      ),
+    );
+  }
 }

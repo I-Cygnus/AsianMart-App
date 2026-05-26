@@ -3,6 +3,7 @@ import 'package:asian_mart_app/core/l10n/app_localizations.dart';
 import 'package:asian_mart_app/core/theme/app_theme.dart';
 import 'package:asian_mart_app/core/utils/formatters.dart';
 import 'package:asian_mart_app/domain/entities/product.dart';
+import 'package:asian_mart_app/presentation/widgets/product_image.dart';
 import 'package:asian_mart_app/presentation/widgets/quantity_stepper.dart';
 
 class ProductDetailPage extends StatefulWidget {
@@ -69,17 +70,14 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           // ── Image area ──────────────────────────────────────────────
           Stack(
             children: [
-              Container(
-                height: 300,
-                color: AppTheme.imagePlaceholder,
-                alignment: Alignment.center,
-                child: Text(
-                  product.name.isEmpty ? '?' : product.name.substring(0, 1),
-                  style: TextStyle(
-                    fontSize: 110,
-                    fontWeight: FontWeight.w900,
-                    color: AppTheme.textTertiary.withValues(alpha: 0.6),
-                  ),
+              SizedBox(
+                height: 320,
+                width: double.infinity,
+                child: ProductImage(
+                  imageUrl: product.imageUrl,
+                  label: product.name,
+                  borderRadius: 0,
+                  fontSize: 110,
                 ),
               ),
               // Bottom gradient fade
@@ -87,7 +85,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 bottom: 0,
                 left: 0,
                 right: 0,
-                height: 60,
+                height: 80,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -95,7 +93,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        AppTheme.background.withValues(alpha: 0.6),
+                        AppTheme.background.withValues(alpha: 0.8),
                       ],
                     ),
                   ),
@@ -103,7 +101,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               ),
               if (product.discountPercent > 0)
                 Positioned(
-                  bottom: 14,
+                  bottom: 16,
                   left: 16,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
