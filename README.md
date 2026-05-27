@@ -222,13 +222,90 @@ flutter build apk --debug
 - 화면의 empty/loading/error 상태
 - 실제 Android 기기에서 API 연결
 
-## 커밋 메시지 예시
+## 현재 연동 상태 및 알려진 문제
 
-```bash
-git commit -m "feat: connect Flutter storefront to backend APIs"
-git commit -m "fix: align Android minSdk with Firebase Messaging"
-git commit -m "style: unify tab header and content spacing"
-git commit -m "docs: add project handoff guide"
+팀원 인수인계용으로, 지금 앱이 어떤 기능은 되고 어떤 기능은 안 되는지 정리합니다.
+
+### 정상 동작 중인 기능
+
+| 기능 | API | 비고 |
+|------|-----|------|
+| 상품 목록 조회 | GET /api/products | 전체 일괄 로드 후 클라이언트에서 검색·정렬 |
+| 상품 상세 조회 | GET /api/products/{id} | |
+| 회원가입 | POST /api/users/signup | |
+| 로그인 / 로그아웃 | POST /api/auth/login, /logout | 로그인 후 쿠키 기반 세션 |
+| 내 정보 조회 | GET /api/users/me | |
+| 장바구니 조회·추가·수량·선택·삭제 | GET/POST/PATCH/DELETE /api/cart/items | 로그인 필수 |
+| 찜 목록 조회 및 토글 | GET /api/wishlist, POST /api/wishlist/items/{id}/toggle | 로그인 필수 |
+| 배송지 조회·추가·기본 설정·삭제 | GET/POST/PATCH/DELETE /api/users/addresses | 로그인 필수 |
+
+### 백엔드 버그로 현재 동작 안 하는 기능
+
+#### 주문 생성 — `POST /order/place`
+
+주문 생성 요청을 보내면 서버에서 **500 Internal Server Error**가 반환됩니다. 백엔드 코드에 두 가지 버그가 있습니다. 백엔드 담당자가 아래 두 곳을 수정해야 합니다.
+
+**버그 1: `OrderService.java` — 클래스 레벨 `@Transactional(readOnly = true)` 제거 필요**
+
+```java
+// 현재 (잘못됨) — 클래스 레벨 readOnly가 placeOrder에도 적용되어 INSERT 불가
+@Service
+@Transactional(readOnly = true)
+public class OrderService {
+    public OrderResponse placeOrder(...) { ... }  // DB 쓰기가 필요한데 readOnly라 실패
+}
+
+// 수정 방향 — 클래스 레벨 어노테이션 제거 후 읽기 메서드에만 개별 지정
+@Service
+public class OrderService {
+    @Transactional(readOnly = true)
+    public OrderResponse getOrder(...) { ... }
+
+    @Transactional
+    public OrderResponse placeOrder(...) { ... }
+}
 ```
 
-한 커밋에 너무 많은 성격의 변경을 섞지 않는 것이 좋습니다. UI 정리, API 연동, Android 빌드 설정, 문서화는 가능하면 분리합니다.
+**버그 2: `OrderPlaceRequest.java` — `toOrder()` 메서드에 `userId`와 `orderDate` 매핑 누락**
+
+```java
+// 현재 (잘못됨) — userId, orderDate가 null로 저장됨
+public Order toOrder() {
+    return Order.builder()
+        .totalAmount(this.totalAmount)
+        .payAmount(this.payAmount)
+        // .userId(...)    ← 없음
+        // .orderDate(...) ← 없음
+        .build();
+}
+
+// 수정 방향
+public Order toOrder(Long userId) {
+    return Order.builder()
+        .userId(userId)
+        .orderDate(LocalDateTime.now())
+        .totalAmount(this.totalAmount)
+        .payAmount(this.payAmount)
+        .build();
+}
+```
+
+백엔드가 수정되기 전까지 앱의 결제/주문 완료 화면은 사용할 수 없습니다.
+
+### API가 없어서 구현하지 못한 기능
+
+아래 기능은 백엔드에 해당 API가 없어서 앱에 구현되어 있지 않습니다. 화면을 추가하려면 백엔드 API를 먼저 만들어야 합니다.
+
+| 기능 | 필요한 API |
+|------|-----------|
+| 주문 내역 조회 | GET /api/orders 또는 GET /api/users/me/orders |
+| 주문 상세 조회 | GET /api/orders/{orderId} |
+| 결제 승인/실패 처리 | 결제 PG 연동 API |
+| 리뷰 및 평점 | GET/POST /api/products/{id}/reviews |
+| 카테고리 목록 조회 | GET /api/categories |
+
+### 앱 설계상 알아둘 점
+
+- **상품 전량 클라이언트 로드**: 현재 `GET /api/products`를 한 번에 전부 받아서 앱 메모리에 저장합니다. 상품이 수백 개를 넘으면 첫 로딩이 느려질 수 있습니다. 백엔드에 페이지네이션(`?page=0&size=20`)이 생기면 `AppController.loadProducts()`와 `HomeTab`에서 무한스크롤로 전환해야 합니다.
+- **카테고리 API 없음**: 홈 화면의 카테고리 필터는 서버에서 받아오지 않고 상품 데이터에서 추출해서 표시합니다. 카테고리 API가 생기면 교체해야 합니다.
+- **게스트 장바구니**: UI에서는 비로그인 시 장바구니를 사용할 수 없도록 막아 두었습니다. 다만 `AppController` 내부에는 게스트 장바구니 병합 코드(`_mergeGuestCartIntoMemberCart`)가 남아 있습니다. 백엔드에 게스트 세션 API가 생기면 활성화할 수 있습니다.
