@@ -20,7 +20,7 @@ class ProductDetailPage extends StatefulWidget {
 
   final Product product;
   final ValueChanged<int> onAddToCart;
-  final Future<void> Function() onBuyNow;
+  final Future<void> Function(int quantity) onBuyNow;
   final Future<void> Function() onToggleWishlist;
   final bool isWishlisted;
   final Future<void> Function() onRequireLogin;
@@ -110,7 +110,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     ),
                     decoration: BoxDecoration(
                       color: AppTheme.primary,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                     ),
                     child: Text(
                       '${product.discountPercent}% 할인',
@@ -164,7 +164,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         ),
                         decoration: BoxDecoration(
                           color: AppTheme.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusXs),
                         ),
                         child: Text(
                           '${product.discountPercent}%',
@@ -283,7 +283,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             ),
           ),
 
-          const SizedBox(height: 100),
+          const SizedBox(height: 24),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -317,7 +317,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               const SizedBox(width: 10),
               Expanded(
                 child: FilledButton(
-                  onPressed: product.isOrderable ? widget.onBuyNow : null,
+                  onPressed: product.isOrderable
+                      ? () => widget.onBuyNow(_quantity)
+                      : null,
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(52),
                     textStyle: const TextStyle(
@@ -350,7 +352,7 @@ class _StatusBadge extends StatelessWidget {
         color: isOrderable
             ? AppTheme.primary.withValues(alpha: 0.08)
             : Colors.black.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppTheme.radiusFull),
       ),
       child: Text(
         label,

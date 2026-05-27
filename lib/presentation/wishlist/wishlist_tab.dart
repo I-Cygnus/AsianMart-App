@@ -4,6 +4,8 @@ import 'package:asian_mart_app/core/theme/app_theme.dart';
 import 'package:asian_mart_app/core/utils/formatters.dart';
 import 'package:asian_mart_app/domain/entities/wishlist_item.dart';
 import 'package:asian_mart_app/presentation/widgets/empty_state.dart';
+import 'package:asian_mart_app/presentation/widgets/product_image.dart';
+import 'package:asian_mart_app/presentation/widgets/tab_header.dart';
 
 class WishlistTab extends StatelessWidget {
   const WishlistTab({
@@ -53,7 +55,12 @@ class WishlistTab extends StatelessWidget {
       body = RefreshIndicator(
         onRefresh: onRefresh,
         child: ListView.separated(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          padding: const EdgeInsets.fromLTRB(
+            TabLayoutSpacing.horizontal,
+            TabLayoutSpacing.contentTop,
+            TabLayoutSpacing.horizontal,
+            TabLayoutSpacing.contentBottom,
+          ),
           itemCount: items.length,
           separatorBuilder: (_, __) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
@@ -71,40 +78,10 @@ class WishlistTab extends StatelessWidget {
 
     return Column(
       children: [
-        Container(
-          color: AppTheme.surface,
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-          child: Row(
-            children: [
-              Text(
-                l10n.wishlistTitle,
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              if (items.isNotEmpty) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '${items.length}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
+        TabHeader(
+          title: l10n.wishlistTitle,
+          badge: items.isNotEmpty ? '${items.length}' : null,
         ),
-        const Divider(height: 1),
         Expanded(child: body),
       ],
     );
@@ -128,29 +105,22 @@ class _WishlistItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppTheme.surface,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  width: 72,
-                  height: 72,
-                  color: AppTheme.imagePlaceholder,
-                  alignment: Alignment.center,
-                  child: item.imageUrl != null && item.imageUrl!.isNotEmpty
-                      ? Image.network(
-                          item.imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              _FallbackLabel(label: item.productName),
-                        )
-                      : _FallbackLabel(label: item.productName),
+              SizedBox(
+                width: 72,
+                height: 72,
+                child: ProductImage(
+                  imageUrl: item.imageUrl,
+                  label: item.productName,
+                  borderRadius: AppTheme.radiusMd,
+                  fontSize: 28,
                 ),
               ),
               const SizedBox(width: 12),
@@ -240,7 +210,7 @@ class _AuthPrompt extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -260,6 +230,7 @@ class _AuthPrompt extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               l10n.authRequiredTitle,
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
@@ -281,7 +252,7 @@ class _AuthPrompt extends StatelessWidget {
             FilledButton(
               onPressed: onRequireLogin,
               style: FilledButton.styleFrom(
-                minimumSize: const Size(160, 48),
+                minimumSize: const Size.fromHeight(52),
               ),
               child: Text(l10n.signIn),
             ),
@@ -310,7 +281,7 @@ class _ErrorState extends StatelessWidget {
             Icon(
               Icons.error_outline_rounded,
               size: 48,
-              color: Colors.red.shade300,
+              color: AppTheme.error,
             ),
             const SizedBox(height: 16),
             Text(
@@ -328,26 +299,6 @@ class _ErrorState extends StatelessWidget {
               label: Text(l10n.retry),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FallbackLabel extends StatelessWidget {
-  const _FallbackLabel({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        label.isEmpty ? '?' : label.substring(0, 1),
-        style: const TextStyle(
-          fontSize: 28,
-          fontWeight: FontWeight.w900,
-          color: AppTheme.textSecondary,
         ),
       ),
     );

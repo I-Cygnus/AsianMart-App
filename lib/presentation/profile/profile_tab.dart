@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:asian_mart_app/core/l10n/app_localizations.dart';
 import 'package:asian_mart_app/core/theme/app_theme.dart';
 import 'package:asian_mart_app/domain/entities/address.dart';
+import 'package:asian_mart_app/presentation/widgets/tab_header.dart';
 import 'package:asian_mart_app/domain/entities/app_user.dart';
 import 'package:asian_mart_app/presentation/profile/address_editor_page.dart';
 
@@ -13,7 +14,6 @@ class ProfileTab extends StatelessWidget {
     required this.addresses,
     required this.isLoading,
     required this.errorMessage,
-    required this.wishlistCount,
     required this.onRequireLogin,
     required this.onRefresh,
     required this.onLogout,
@@ -28,7 +28,6 @@ class ProfileTab extends StatelessWidget {
   final List<Address> addresses;
   final bool isLoading;
   final String? errorMessage;
-  final int wishlistCount;
   final VoidCallback onRequireLogin;
   final Future<void> Function() onRefresh;
   final Future<void> Function() onLogout;
@@ -49,19 +48,20 @@ class ProfileTab extends StatelessWidget {
 
     return Column(
       children: [
-        Container(
-          color: AppTheme.surface,
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-          child: Row(
-            children: [
-              Text(
-                l10n.profileTitle,
-                style: Theme.of(context).textTheme.headlineMedium,
+        TabHeader(
+          title: l10n.profileTitle,
+          action: GestureDetector(
+            onTap: onOpenLanguageSettings,
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(
+                Icons.settings_outlined,
+                size: 20,
+                color: AppTheme.textTertiary,
               ),
-            ],
+            ),
           ),
         ),
-        const Divider(height: 1),
         Expanded(
           child: isAuthenticated
               ? _AuthenticatedView(
@@ -69,13 +69,11 @@ class ProfileTab extends StatelessWidget {
                   addresses: addresses,
                   isLoading: isLoading,
                   errorMessage: errorMessage,
-                  wishlistCount: wishlistCount,
                   onRefresh: onRefresh,
                   onLogout: onLogout,
                   onAddAddress: onAddAddress,
                   onSetDefault: onSetDefault,
                   onDeleteAddress: onDeleteAddress,
-                  onOpenLanguageSettings: onOpenLanguageSettings,
                 )
               : _GuestView(onRequireLogin: onRequireLogin),
         ),
@@ -92,115 +90,57 @@ class _GuestView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Column(
-      children: [
-        Expanded(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(40),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 96,
-                    height: 96,
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary.withValues(alpha: 0.07),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.person_outline_rounded,
-                      size: 46,
-                      color: AppTheme.primary.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    '로그인하고 더 많이 활용해 보세요',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.textPrimary,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    l10n.profileGuestDesc,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.textTertiary,
-                      height: 1.6,
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  _FeatureRow(),
-                ],
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.07),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.person_outline_rounded,
+                size: 46,
+                color: AppTheme.primary.withValues(alpha: 0.5),
               ),
             ),
-          ),
-        ),
-        SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-            child: FilledButton(
+            const SizedBox(height: 24),
+            Text(
+              l10n.authRequiredTitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.textPrimary,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              l10n.profileGuestDesc,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppTheme.textTertiary,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 28),
+            FilledButton(
               onPressed: onRequireLogin,
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(52),
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
               ),
               child: Text(l10n.signIn),
             ),
-          ),
+          ],
         ),
-      ],
-    );
-  }
-}
-
-class _FeatureRow extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    const items = [
-      (Icons.favorite_border_rounded, '찜 목록'),
-      (Icons.location_on_outlined, '배송지'),
-      (Icons.receipt_long_outlined, '주문 내역'),
-    ];
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: items.map((item) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Column(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F6FA),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(item.$1, size: 22, color: AppTheme.textSecondary),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                item.$2,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
+      ),
     );
   }
 }
@@ -211,20 +151,17 @@ class _AuthenticatedView extends StatelessWidget {
     required this.addresses,
     required this.isLoading,
     required this.errorMessage,
-    required this.wishlistCount,
     required this.onRefresh,
     required this.onLogout,
     required this.onAddAddress,
     required this.onSetDefault,
     required this.onDeleteAddress,
-    required this.onOpenLanguageSettings,
   });
 
   final AppUser? user;
   final List<Address> addresses;
   final bool isLoading;
   final String? errorMessage;
-  final int wishlistCount;
   final Future<void> Function() onRefresh;
   final Future<void> Function() onLogout;
   final Future<String?> Function({
@@ -236,7 +173,6 @@ class _AuthenticatedView extends StatelessWidget {
   }) onAddAddress;
   final ValueChanged<int> onSetDefault;
   final ValueChanged<int> onDeleteAddress;
-  final VoidCallback onOpenLanguageSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -245,25 +181,14 @@ class _AuthenticatedView extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        padding: const EdgeInsets.fromLTRB(
+          TabLayoutSpacing.horizontal,
+          TabLayoutSpacing.contentTop,
+          TabLayoutSpacing.horizontal,
+          TabLayoutSpacing.contentBottom,
+        ),
         children: [
           _UserCard(user: user, onLogout: onLogout),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _MetricCard(
-                icon: Icons.favorite_rounded,
-                label: l10n.wishlistLabel,
-                value: '$wishlistCount',
-              ),
-              const SizedBox(width: 10),
-              _MetricCard(
-                icon: Icons.location_on_rounded,
-                label: l10n.addressManage,
-                value: '${addresses.length}',
-              ),
-            ],
-          ),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -315,7 +240,7 @@ class _AuthenticatedView extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 28),
               decoration: BoxDecoration(
                 color: AppTheme.surface,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
               ),
               child: Column(
                 children: [
@@ -353,20 +278,6 @@ class _AuthenticatedView extends StatelessWidget {
               ),
               const SizedBox(height: 10),
             ],
-          const SizedBox(height: 8),
-          ListTile(
-            tileColor: AppTheme.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            leading: const Icon(Icons.language_rounded, color: AppTheme.textSecondary),
-            title: Text(l10n.languageSettings),
-            trailing: const Icon(
-              Icons.chevron_right_rounded,
-              color: AppTheme.textTertiary,
-            ),
-            onTap: onOpenLanguageSettings,
-          ),
         ],
       ),
     );
@@ -386,7 +297,7 @@ class _UserCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
       ),
       child: Row(
         children: [
@@ -456,58 +367,6 @@ class _UserCard extends StatelessWidget {
   }
 }
 
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: AppTheme.primary.withValues(alpha: 0.7)),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: AppTheme.textPrimary,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _AddressCard extends StatelessWidget {
   const _AddressCard({
     required this.address,
@@ -526,7 +385,7 @@ class _AddressCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         border: address.isDefault
             ? Border.all(
                 color: AppTheme.primary.withValues(alpha: 0.3),
@@ -558,7 +417,7 @@ class _AddressCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: AppTheme.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                         ),
                         child: Text(
                           l10n.defaultAddress,

@@ -16,16 +16,31 @@ class ApiClient {
   final HttpClient _httpClient = HttpClient();
 
   Future<List<Product>> fetchProducts() async {
-    final response = await _send('GET', '/api/products', query: {
-      'page': '0',
-      'size': '100',
-    });
-    final body = _asMap(response.data);
-    final content = body['content'] as List<dynamic>? ?? const [];
-    return content
-        .whereType<Map<String, dynamic>>()
-        .map(Product.fromJson)
-        .toList();
+    final products = <Product>[];
+    var page = 0;
+
+    while (true) {
+      final response = await _send('GET', '/api/products', query: {
+        'page': '$page',
+        'size': '100',
+      });
+      final body = _asMap(response.data);
+      final content = body['content'] as List<dynamic>? ?? const [];
+      products.addAll(
+        content.whereType<Map<String, dynamic>>().map(Product.fromJson),
+      );
+
+      final isLastPage = body['last'] as bool? ?? false;
+      final totalPages = (body['totalPages'] as num?)?.toInt();
+      if (content.isEmpty ||
+          isLastPage ||
+          (totalPages != null && page >= totalPages - 1)) {
+        break;
+      }
+      page += 1;
+    }
+
+    return products;
   }
 
   Future<String> login({
@@ -262,7 +277,7 @@ class ApiClient {
     required String accessToken,
     required int userId,
     required List<Map<String, int>> products,
-    required int totalAmount,
+    required num totalAmount,
     required String requestMessage,
   }) async {
     await _send(

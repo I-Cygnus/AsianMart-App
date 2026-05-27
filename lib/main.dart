@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:asian_mart_app/core/l10n/app_localizations.dart';
 import 'package:asian_mart_app/core/network/api_client.dart';
 import 'package:asian_mart_app/core/state/app_controller.dart';
@@ -92,7 +93,12 @@ class _AsiaMartAppState extends State<AsiaMartApp> {
   @override
   void initState() {
     super.initState();
-    _controller = AppController(ApiClient())..bootstrap();
+    _controller = AppController(
+      ApiClient(),
+      const FlutterSecureStorage(
+        aOptions: AndroidOptions(encryptedSharedPreferences: true),
+      ),
+    )..bootstrap();
     _initFcm();
   }
 

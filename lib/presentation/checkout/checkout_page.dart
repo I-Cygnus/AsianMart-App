@@ -145,7 +145,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   maxLines: 3,
                   decoration: InputDecoration(
                     hintText: l10n.orderNoteHint,
-                    border: const OutlineInputBorder(),
                   ),
                 ),
               ),
@@ -239,7 +238,7 @@ class _Section extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

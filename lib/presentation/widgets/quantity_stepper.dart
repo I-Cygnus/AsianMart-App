@@ -16,7 +16,7 @@ class QuantityStepper extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: AppTheme.border),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(AppTheme.radiusXs),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -57,7 +57,7 @@ class _StepButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(AppTheme.radiusXs),
       child: Padding(
         padding: const EdgeInsets.all(8),
         child: Icon(icon, size: 18, color: AppTheme.textSecondary),

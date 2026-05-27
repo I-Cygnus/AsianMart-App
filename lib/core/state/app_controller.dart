@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:asian_mart_app/core/network/api_client.dart';
 import 'package:asian_mart_app/core/network/api_exception.dart';
 import 'package:asian_mart_app/domain/entities/address.dart';
@@ -8,9 +9,12 @@ import 'package:asian_mart_app/domain/entities/product.dart';
 import 'package:asian_mart_app/domain/entities/wishlist_item.dart';
 
 class AppController extends ChangeNotifier {
-  AppController(this._apiClient);
+  AppController(this._apiClient, this._storage);
 
   final ApiClient _apiClient;
+  final FlutterSecureStorage _storage;
+
+  static const _tokenKey = 'access_token';
 
   String? _accessToken;
   String? _guestToken;
@@ -89,10 +93,20 @@ class AppController extends ChangeNotifier {
       return;
     }
     _bootstrapped = true;
+
+    final savedToken = await _storage.read(key: _tokenKey);
+    if (savedToken != null && savedToken.isNotEmpty) {
+      _accessToken = savedToken;
+    }
+
     await Future.wait([
       loadProducts(),
       loadCart(),
     ]);
+
+    if (isAuthenticated) {
+      await Future.wait([loadWishlist(), loadProfile()]);
+    }
   }
 
   Future<void> loadProducts() async {
@@ -144,6 +158,10 @@ class AppController extends ChangeNotifier {
     try {
       _wishlistItems = await _apiClient.fetchWishlist(_accessToken!);
     } catch (error) {
+      if (error is ApiException && error.statusCode == 401) {
+        await _clearPersistedToken();
+        return;
+      }
       _wishlistError = _messageOf(error);
     } finally {
       _wishlistLoading = false;
@@ -171,11 +189,24 @@ class AppController extends ChangeNotifier {
       _currentUser = results[0] as AppUser;
       _addresses = results[1] as List<Address>;
     } catch (error) {
+      if (error is ApiException && error.statusCode == 401) {
+        await _clearPersistedToken();
+        return;
+      }
       _profileError = _messageOf(error);
     } finally {
       _profileLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _clearPersistedToken() async {
+    _accessToken = null;
+    _wishlistItems = const [];
+    _addresses = const [];
+    _currentUser = null;
+    await _storage.delete(key: _tokenKey);
+    notifyListeners();
   }
 
   Future<String?> login({
@@ -185,12 +216,18 @@ class AppController extends ChangeNotifier {
     _authLoading = true;
     notifyListeners();
     try {
+      final guestCartItems = _snapshotGuestCartItems();
       _accessToken = await _apiClient.login(email: email, password: password);
+      await _storage.write(key: _tokenKey, value: _accessToken);
+      final mergeFailures = await _mergeGuestCartIntoMemberCart(guestCartItems);
       await Future.wait([
         loadCart(),
         loadWishlist(),
         loadProfile(),
       ]);
+      if (mergeFailures.isNotEmpty) {
+        _cartError = '일부 게스트 장바구니 상품을 회원 장바구니로 옮기지 못했습니다.';
+      }
       return null;
     } catch (error) {
       return _messageOf(error);
@@ -209,6 +246,7 @@ class AppController extends ChangeNotifier {
     _authLoading = true;
     notifyListeners();
     try {
+      final guestCartItems = _snapshotGuestCartItems();
       await _apiClient.signup(
         email: email,
         password: password,
@@ -216,11 +254,16 @@ class AppController extends ChangeNotifier {
         phone: phone,
       );
       _accessToken = await _apiClient.login(email: email, password: password);
+      await _storage.write(key: _tokenKey, value: _accessToken);
+      final mergeFailures = await _mergeGuestCartIntoMemberCart(guestCartItems);
       await Future.wait([
         loadCart(),
         loadWishlist(),
         loadProfile(),
       ]);
+      if (mergeFailures.isNotEmpty) {
+        _cartError = '일부 게스트 장바구니 상품을 회원 장바구니로 옮기지 못했습니다.';
+      }
       return null;
     } catch (error) {
       return _messageOf(error);
@@ -233,10 +276,12 @@ class AppController extends ChangeNotifier {
   Future<void> logout() async {
     final token = _accessToken;
     _accessToken = null;
+    _guestToken = null;
     _wishlistItems = const [];
     _addresses = const [];
     _currentUser = null;
     notifyListeners();
+    await _storage.delete(key: _tokenKey);
     if (token != null && token.isNotEmpty) {
       try {
         await _apiClient.logout(token);
@@ -410,7 +455,7 @@ class AppController extends ChangeNotifier {
       return '기본 배송지를 먼저 등록해 주세요.';
     }
 
-    final totalAmount = selectedCartTotal.round();
+    final totalAmount = _normalizeCurrency(selectedCartTotal);
 
     try {
       await _apiClient.placeOrder(
@@ -442,5 +487,39 @@ class AppController extends ChangeNotifier {
       return error.message;
     }
     return '요청 처리 중 문제가 발생했습니다.';
+  }
+
+  List<CartEntry> _snapshotGuestCartItems() {
+    if (_guestToken == null || _guestToken!.isEmpty || isAuthenticated) {
+      return const [];
+    }
+    return List<CartEntry>.from(_cartItems);
+  }
+
+  Future<List<int>> _mergeGuestCartIntoMemberCart(List<CartEntry> guestCartItems) async {
+    if (guestCartItems.isEmpty || !isAuthenticated) {
+      _guestToken = null;
+      return const [];
+    }
+
+    final failedProductIds = <int>[];
+    for (final item in guestCartItems) {
+      try {
+        await _apiClient.addCartItem(
+          productId: item.productId,
+          quantity: item.quantity,
+          accessToken: _accessToken,
+        );
+      } catch (_) {
+        failedProductIds.add(item.productId);
+      }
+    }
+
+    _guestToken = null;
+    return failedProductIds;
+  }
+
+  double _normalizeCurrency(double value) {
+    return double.parse(value.toStringAsFixed(2));
   }
 }

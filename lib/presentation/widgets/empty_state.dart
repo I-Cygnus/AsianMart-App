@@ -64,7 +64,7 @@ class EmptyState extends StatelessWidget {
               FilledButton(
                 onPressed: onAction,
                 style: FilledButton.styleFrom(
-                  minimumSize: const Size(160, 48),
+                  minimumSize: const Size.fromHeight(52),
                 ),
                 child: Text(actionLabel!),
               ),

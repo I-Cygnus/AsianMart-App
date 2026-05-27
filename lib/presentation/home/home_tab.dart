@@ -8,12 +8,13 @@ import 'package:asian_mart_app/domain/entities/product.dart';
 import 'package:asian_mart_app/domain/enums/sort_mode.dart';
 import 'package:asian_mart_app/presentation/widgets/empty_state.dart';
 import 'package:asian_mart_app/presentation/widgets/product_image.dart';
+import 'package:asian_mart_app/presentation/widgets/tab_header.dart';
 
 // ── Category definition ───────────────────────────────────────────────────────
 
 class _Category {
   const _Category({required this.id, required this.label, required this.icon});
-  final int? id; // null = 전체
+  final int? id;
   final String label;
   final String icon;
 }
@@ -58,13 +59,13 @@ const _kBanners = [
   _BannerData(
     title: '이번 주 특가 상품',
     subtitle: '최대 30% 할인 · 한정 수량',
-    gradient: [Color(0xFF1976D2), Color(0xFF42A5F5)],
+    gradient: [Color(0xFF1565C0), Color(0xFF42A5F5)],
     icon: Icons.local_offer_rounded,
   ),
   _BannerData(
     title: '무료배송 이벤트',
-    subtitle: '\$30 이상 구매 시 무료배송',
-    gradient: [Color(0xFF388E3C), Color(0xFF66BB6A)],
+    subtitle: '30,000원 이상 구매 시 무료배송',
+    gradient: [Color(0xFF2E7D32), Color(0xFF66BB6A)],
     icon: Icons.local_shipping_rounded,
   ),
 ];
@@ -82,10 +83,12 @@ class HomeTab extends StatefulWidget {
     required this.currentUserName,
     required this.isAuthenticated,
     required this.wishlistIds,
+    required this.cartCount,
     required this.onSearchChanged,
     required this.onSortChanged,
     required this.onRefresh,
     required this.onOpenAuth,
+    required this.onCartTap,
     required this.onProductTap,
     required this.onToggleWishlist,
     required this.onAddToCart,
@@ -99,10 +102,12 @@ class HomeTab extends StatefulWidget {
   final String? currentUserName;
   final bool isAuthenticated;
   final Set<int> wishlistIds;
+  final int cartCount;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<SortMode> onSortChanged;
   final Future<void> Function() onRefresh;
   final VoidCallback onOpenAuth;
+  final VoidCallback onCartTap;
   final ValueChanged<Product> onProductTap;
   final ValueChanged<int> onToggleWishlist;
   final ValueChanged<Product> onAddToCart;
@@ -168,20 +173,95 @@ class _HomeTabState extends State<HomeTab> {
     });
   }
 
+  void _showSortSheet(AppLocalizations l10n) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXl)),
+      ),
+      builder: (_) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppTheme.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '정렬 기준',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textPrimary,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ),
+              ),
+              ...SortMode.values.map((mode) {
+                final isActive = widget.sortMode == mode;
+                return ListTile(
+                  dense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+                  title: Text(
+                    l10n.sortModeLabel(mode),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight:
+                          isActive ? FontWeight.w700 : FontWeight.w400,
+                      color:
+                          isActive ? AppTheme.primary : AppTheme.textPrimary,
+                    ),
+                  ),
+                  trailing: isActive
+                      ? const Icon(
+                          Icons.check_rounded,
+                          color: AppTheme.primary,
+                          size: 20,
+                        )
+                      : null,
+                  onTap: () {
+                    widget.onSortChanged(mode);
+                    Navigator.pop(context);
+                  },
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Column(
       children: [
-        _SearchHeader(
-          controller: _searchController,
-          hintText: l10n.searchProductHint,
-          onChanged: widget.onSearchChanged,
-          isAuthenticated: widget.isAuthenticated,
-          userName: widget.currentUserName,
-          onOpenAuth: widget.onOpenAuth,
+        TabHeader(
+          leading: const _HomeLogo(),
+          action: _HomeActions(
+            cartCount: widget.cartCount,
+            isAuthenticated: widget.isAuthenticated,
+            userName: widget.currentUserName,
+            onCartTap: widget.onCartTap,
+            onOpenAuth: widget.onOpenAuth,
+          ),
         ),
-        const Divider(height: 1),
         Expanded(child: _buildBody(l10n)),
       ],
     );
@@ -192,7 +272,10 @@ class _HomeTabState extends State<HomeTab> {
       return const _GridLoadingSkeleton();
     }
     if (widget.errorMessage != null && widget.products.isEmpty) {
-      return _ErrorPanel(message: widget.errorMessage!, onRetry: widget.onRefresh);
+      return _ErrorPanel(
+        message: widget.errorMessage!,
+        onRetry: widget.onRefresh,
+      );
     }
     if (widget.products.isEmpty) {
       return EmptyState(
@@ -208,14 +291,23 @@ class _HomeTabState extends State<HomeTab> {
       onRefresh: widget.onRefresh,
       child: CustomScrollView(
         slivers: [
+          // Search bar (scrolls with content)
+          SliverToBoxAdapter(
+            child: _HomeSearchBar(
+              controller: _searchController,
+              hintText: l10n.searchProductHint,
+              onChanged: widget.onSearchChanged,
+            ),
+          ),
+
           // Banner carousel
           if (widget.searchQuery.isEmpty)
             const SliverToBoxAdapter(child: _BannerCarousel()),
 
-          // Category chips
+          // Category circles
           if (widget.searchQuery.isEmpty && _categories.length > 1)
             SliverToBoxAdapter(
-              child: _CategoryChips(
+              child: _QuickCategories(
                 categories: _categories,
                 selected: _selectedCategoryId,
                 allSelected: _categoryAllSelected,
@@ -228,7 +320,8 @@ class _HomeTabState extends State<HomeTab> {
             child: _SortBar(
               productCount: shown.length,
               sortMode: widget.sortMode,
-              onSortChanged: widget.onSortChanged,
+              onSortTap: () => _showSortSheet(l10n),
+              l10n: l10n,
             ),
           ),
 
@@ -244,7 +337,7 @@ class _HomeTabState extends State<HomeTab> {
             )
           else
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 40),
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 40),
               sliver: SliverGrid(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
@@ -275,122 +368,217 @@ class _HomeTabState extends State<HomeTab> {
   }
 }
 
-// ── Search Header ─────────────────────────────────────────────────────────────
+// ── Home Header Widgets ───────────────────────────────────────────────────────
 
-class _SearchHeader extends StatelessWidget {
-  const _SearchHeader({
+class _HomeLogo extends StatelessWidget {
+  const _HomeLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: AppTheme.primary,
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+          ),
+          child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 17),
+        ),
+        const SizedBox(width: 8),
+        const Text(
+          'Asian Mart',
+          style: TextStyle(
+            fontSize: 19,
+            fontWeight: FontWeight.w900,
+            color: AppTheme.textPrimary,
+            letterSpacing: -0.5,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HomeActions extends StatelessWidget {
+  const _HomeActions({
+    required this.cartCount,
+    required this.isAuthenticated,
+    required this.userName,
+    required this.onCartTap,
+    required this.onOpenAuth,
+  });
+
+  final int cartCount;
+  final bool isAuthenticated;
+  final String? userName;
+  final VoidCallback onCartTap;
+  final VoidCallback onOpenAuth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _HeaderIconBtn(icon: Icons.notifications_outlined, onTap: () {}),
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            _HeaderIconBtn(icon: Icons.shopping_bag_outlined, onTap: onCartTap),
+            if (cartCount > 0)
+              Positioned(
+                top: 6,
+                right: 4,
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 3.5),
+                  decoration: const BoxDecoration(
+                    color: AppTheme.primary,
+                    borderRadius: BorderRadius.all(Radius.circular(AppTheme.radiusSm)),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    cartCount > 99 ? '99+' : '$cartCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        if (!isAuthenticated)
+          TextButton(
+            onPressed: onOpenAuth,
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.primary,
+              textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              minimumSize: const Size(0, 40),
+            ),
+            child: const Text('로그인'),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: GestureDetector(
+              onTap: onOpenAuth,
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  (userName ?? '').isEmpty ? '?' : userName!.substring(0, 1),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _HomeSearchBar extends StatefulWidget {
+  const _HomeSearchBar({
     required this.controller,
     required this.hintText,
     required this.onChanged,
-    required this.isAuthenticated,
-    required this.userName,
-    required this.onOpenAuth,
   });
 
   final TextEditingController controller;
   final String hintText;
   final ValueChanged<String> onChanged;
-  final bool isAuthenticated;
-  final String? userName;
-  final VoidCallback onOpenAuth;
+
+  @override
+  State<_HomeSearchBar> createState() => _HomeSearchBarState();
+}
+
+class _HomeSearchBarState extends State<_HomeSearchBar> {
+  bool _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _hasText = widget.controller.text.isNotEmpty;
+    widget.controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTextChanged);
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    final hasText = widget.controller.text.isNotEmpty;
+    if (hasText != _hasText) setState(() => _hasText = hasText);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppTheme.surface,
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppTheme.background,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.border),
-              ),
-              child: TextField(
-                controller: controller,
-                onChanged: onChanged,
-                style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
-                decoration: InputDecoration(
-                  hintText: hintText,
-                  hintStyle: const TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.textTertiary,
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.search_rounded,
-                    size: 20,
-                    color: AppTheme.textTertiary,
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                  isDense: true,
-                ),
-              ),
-            ),
+      color: AppTheme.background,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Container(
+        height: 44,
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: TextField(
+          controller: widget.controller,
+          onChanged: widget.onChanged,
+          style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
+          decoration: InputDecoration(
+            hintText: widget.hintText,
+            hintStyle: const TextStyle(fontSize: 14, color: AppTheme.textTertiary),
+            prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppTheme.textTertiary),
+            suffixIcon: _hasText
+                ? IconButton(
+                    icon: const Icon(Icons.cancel_rounded, size: 18, color: AppTheme.textTertiary),
+                    onPressed: () {
+                      widget.controller.clear();
+                      widget.onChanged('');
+                    },
+                  )
+                : null,
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            isDense: true,
           ),
-          const SizedBox(width: 10),
-          if (!isAuthenticated)
-            _LoginChip(onTap: onOpenAuth)
-          else
-            _UserAvatar(name: userName ?? ''),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _LoginChip extends StatelessWidget {
-  const _LoginChip({required this.onTap});
+class _HeaderIconBtn extends StatelessWidget {
+  const _HeaderIconBtn({required this.icon, required this.onTap});
+
+  final IconData icon;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppTheme.primary,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: const Text(
-          '로그인',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _UserAvatar extends StatelessWidget {
-  const _UserAvatar({required this.name});
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: AppTheme.primary.withValues(alpha: 0.12),
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        name.isEmpty ? '?' : name.substring(0, 1),
-        style: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w800,
-          color: AppTheme.primary,
-        ),
-      ),
+    return IconButton(
+      icon: Icon(icon, size: 24, color: AppTheme.textSecondary),
+      onPressed: onTap,
+      padding: const EdgeInsets.all(8),
+      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
     );
   }
 }
@@ -405,7 +593,7 @@ class _BannerCarousel extends StatefulWidget {
 }
 
 class _BannerCarouselState extends State<_BannerCarousel> {
-  final _pageController = PageController(viewportFraction: 0.92);
+  final _pageController = PageController(viewportFraction: 0.9);
   int _currentPage = 0;
   Timer? _timer;
 
@@ -417,7 +605,7 @@ class _BannerCarouselState extends State<_BannerCarousel> {
       final next = (_currentPage + 1) % _kBanners.length;
       _pageController.animateToPage(
         next,
-        duration: const Duration(milliseconds: 400),
+        duration: const Duration(milliseconds: 380),
         curve: Curves.easeInOut,
       );
     });
@@ -432,40 +620,40 @@ class _BannerCarouselState extends State<_BannerCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 140,
-          child: PageView.builder(
-            controller: _pageController,
-            itemCount: _kBanners.length,
-            onPageChanged: (i) => setState(() => _currentPage = i),
-            itemBuilder: (context, index) {
-              final b = _kBanners[index];
-              return _BannerCard(data: b);
-            },
+    return Container(
+      color: AppTheme.surface,
+      padding: const EdgeInsets.only(top: 4, bottom: 14),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 148,
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: _kBanners.length,
+              onPageChanged: (i) => setState(() => _currentPage = i),
+              itemBuilder: (_, index) =>
+                  _BannerCard(data: _kBanners[index]),
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_kBanners.length, (i) {
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: i == _currentPage ? 18 : 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: i == _currentPage
-                    ? AppTheme.primary
-                    : AppTheme.border,
-                borderRadius: BorderRadius.circular(3),
-              ),
-            );
-          }),
-        ),
-        const SizedBox(height: 4),
-      ],
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(_kBanners.length, (i) {
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: i == _currentPage ? 20 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color:
+                      i == _currentPage ? AppTheme.primary : AppTheme.border,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -477,17 +665,17 @@ class _BannerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: data.gradient,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         boxShadow: [
           BoxShadow(
-            color: data.gradient.first.withValues(alpha: 0.35),
+            color: data.gradient.first.withValues(alpha: 0.28),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -496,16 +684,16 @@ class _BannerCard extends StatelessWidget {
       child: Stack(
         children: [
           Positioned(
-            right: -16,
-            bottom: -16,
+            right: -8,
+            bottom: -8,
             child: Icon(
               data.icon,
-              size: 130,
-              color: Colors.white.withValues(alpha: 0.1),
+              size: 110,
+              color: Colors.white.withValues(alpha: 0.12),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(22, 22, 100, 22),
+            padding: const EdgeInsets.fromLTRB(22, 0, 100, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
@@ -516,7 +704,7 @@ class _BannerCard extends StatelessWidget {
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: -0.5,
+                    letterSpacing: -0.4,
                     height: 1.2,
                   ),
                 ),
@@ -524,7 +712,7 @@ class _BannerCard extends StatelessWidget {
                 Text(
                   data.subtitle,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.88),
+                    color: Colors.white.withValues(alpha: 0.9),
                     fontSize: 13,
                     height: 1.4,
                   ),
@@ -538,10 +726,10 @@ class _BannerCard extends StatelessWidget {
   }
 }
 
-// ── Category Chips ────────────────────────────────────────────────────────────
+// ── Quick Categories ──────────────────────────────────────────────────────────
 
-class _CategoryChips extends StatelessWidget {
-  const _CategoryChips({
+class _QuickCategories extends StatelessWidget {
+  const _QuickCategories({
     required this.categories,
     required this.selected,
     required this.allSelected,
@@ -557,45 +745,58 @@ class _CategoryChips extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: AppTheme.surface,
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.fromLTRB(0, 16, 0, 16),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: categories.map((cat) {
-            final isActive =
-                cat.id == null ? allSelected : (!allSelected && selected == cat.id);
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: GestureDetector(
-                onTap: () => onSelect(cat),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: isActive ? AppTheme.primary : Colors.transparent,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isActive ? AppTheme.primary : AppTheme.border,
-                      width: isActive ? 0 : 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(cat.icon, style: const TextStyle(fontSize: 14)),
-                      const SizedBox(width: 5),
-                      Text(
-                        cat.label,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+            final isActive = cat.id == null
+                ? allSelected
+                : (!allSelected && selected == cat.id);
+            return GestureDetector(
+              onTap: () => onSelect(cat),
+              child: Padding(
+                padding: const EdgeInsets.only(right: 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? AppTheme.primary.withValues(alpha: 0.1)
+                            : AppTheme.background,
+                        shape: BoxShape.circle,
+                        border: Border.all(
                           color:
-                              isActive ? Colors.white : AppTheme.textSecondary,
+                              isActive ? AppTheme.primary : AppTheme.border,
+                          width: isActive ? 2 : 1,
                         ),
                       ),
-                    ],
-                  ),
+                      child: Center(
+                        child: Text(
+                          cat.icon,
+                          style: const TextStyle(fontSize: 22),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      cat.label,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: isActive
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: isActive
+                            ? AppTheme.primary
+                            : AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );
@@ -612,64 +813,63 @@ class _SortBar extends StatelessWidget {
   const _SortBar({
     required this.productCount,
     required this.sortMode,
-    required this.onSortChanged,
+    required this.onSortTap,
+    required this.l10n,
   });
 
   final int productCount;
   final SortMode sortMode;
-  final ValueChanged<SortMode> onSortChanged;
+  final VoidCallback onSortTap;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
-      child: Row(
-        children: [
-          Text(
-            '총 $productCount개',
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppTheme.textTertiary,
-              fontWeight: FontWeight.w500,
+    return GestureDetector(
+      onTap: onSortTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+        color: Colors.transparent,
+        child: Row(
+          children: [
+            Text(
+              '상품 $productCount개',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
             ),
-          ),
-          const Spacer(),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: SortMode.values.map((mode) {
-                final isActive = sortMode == mode;
-                return Padding(
-                  padding: const EdgeInsets.only(left: 6),
-                  child: GestureDetector(
-                    onTap: () => onSortChanged(mode),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isActive
-                            ? AppTheme.primary.withValues(alpha: 0.09)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        l10n.sortModeLabel(mode),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                          color: isActive ? AppTheme.primary : AppTheme.textTertiary,
-                        ),
-                      ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.sortModeLabel(sortMode),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
                     ),
                   ),
-                );
-              }).toList(),
+                  const SizedBox(width: 2),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 16,
+                    color: AppTheme.textSecondary,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -701,10 +901,10 @@ class _GridProductCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x0A000000),
+              color: Color(0x0C000000),
               blurRadius: 8,
               offset: Offset(0, 2),
             ),
@@ -714,7 +914,7 @@ class _GridProductCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Image ─────────────────────────────────────
+            // Image
             Stack(
               children: [
                 AspectRatio(
@@ -739,8 +939,8 @@ class _GridProductCard extends StatelessWidget {
                       decoration: const BoxDecoration(
                         color: AppTheme.primary,
                         borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(14),
-                          bottomRight: Radius.circular(10),
+                          topLeft: Radius.circular(AppTheme.radiusLg),
+                          bottomRight: Radius.circular(AppTheme.radiusSm),
                         ),
                       ),
                       child: Text(
@@ -757,7 +957,7 @@ class _GridProductCard extends StatelessWidget {
                 if (unavailable)
                   Positioned.fill(
                     child: Container(
-                      color: Colors.black.withValues(alpha: 0.38),
+                      color: Colors.black.withValues(alpha: 0.35),
                       alignment: Alignment.center,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -765,8 +965,8 @@ class _GridProductCard extends StatelessWidget {
                           vertical: 5,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.65),
-                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.black.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                         ),
                         child: const Text(
                           '일시품절',
@@ -790,7 +990,7 @@ class _GridProductCard extends StatelessWidget {
                 ),
               ],
             ),
-            // ── Info ──────────────────────────────────────
+            // Info
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10, 9, 10, 10),
@@ -809,7 +1009,7 @@ class _GridProductCard extends StatelessWidget {
                       ),
                     ),
                     const Spacer(),
-                    if (product.discountPercent > 0) ...[
+                    if (product.discountPercent > 0)
                       Text(
                         formatPrice(product.listPrice),
                         style: const TextStyle(
@@ -818,10 +1018,8 @@ class _GridProductCard extends StatelessWidget {
                           decoration: TextDecoration.lineThrough,
                         ),
                       ),
-                      const SizedBox(height: 1),
-                    ],
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Expanded(
                           child: Column(
@@ -848,8 +1046,7 @@ class _GridProductCard extends StatelessWidget {
                             ],
                           ),
                         ),
-                        if (!unavailable)
-                          _AddButton(onPressed: onAddToCart),
+                        if (!unavailable) _AddButton(onPressed: onAddToCart),
                       ],
                     ),
                   ],
@@ -877,18 +1074,20 @@ class _HeartButton extends StatelessWidget {
         width: 32,
         height: 32,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.92),
+          color: Colors.white.withValues(alpha: 0.9),
           shape: BoxShape.circle,
           boxShadow: const [
             BoxShadow(
-              color: Color(0x1A000000),
+              color: Color(0x18000000),
               blurRadius: 6,
               offset: Offset(0, 1),
             ),
           ],
         ),
         child: Icon(
-          isWishlisted ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          isWishlisted
+              ? Icons.favorite_rounded
+              : Icons.favorite_border_rounded,
           size: 17,
           color: isWishlisted ? AppTheme.primary : AppTheme.textTertiary,
         ),
@@ -911,7 +1110,7 @@ class _AddButton extends StatelessWidget {
         height: 32,
         decoration: BoxDecoration(
           color: AppTheme.primary,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         ),
         child: const Icon(Icons.add_rounded, size: 18, color: Colors.white),
       ),
@@ -949,7 +1148,7 @@ class _GridSkeletonCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -959,7 +1158,8 @@ class _GridSkeletonCard extends StatelessWidget {
             child: Container(
               decoration: const BoxDecoration(
                 color: AppTheme.imagePlaceholder,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLg)),
               ),
             ),
           ),
@@ -1032,25 +1232,19 @@ class _ErrorPanel extends StatelessWidget {
                 color: Colors.red.shade50,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.wifi_off_rounded, size: 38, color: Colors.red.shade300),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              '불러오는 데 실패했어요',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.textPrimary,
-                letterSpacing: -0.3,
+              child: Icon(
+                Icons.error_outline_rounded,
+                size: 38,
+                color: Colors.red.shade300,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 20),
             Text(
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 13,
-                color: AppTheme.textTertiary,
+                fontSize: 14,
+                color: AppTheme.textSecondary,
                 height: 1.5,
               ),
             ),

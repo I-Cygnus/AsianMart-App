@@ -4,11 +4,14 @@ import 'package:asian_mart_app/core/theme/app_theme.dart';
 import 'package:asian_mart_app/core/utils/formatters.dart';
 import 'package:asian_mart_app/domain/entities/cart_entry.dart';
 import 'package:asian_mart_app/presentation/widgets/empty_state.dart';
+import 'package:asian_mart_app/presentation/widgets/product_image.dart';
 import 'package:asian_mart_app/presentation/widgets/quantity_stepper.dart';
+import 'package:asian_mart_app/presentation/widgets/tab_header.dart';
 
 class CartTab extends StatelessWidget {
   const CartTab({
     super.key,
+    required this.isAuthenticated,
     required this.items,
     required this.isLoading,
     required this.errorMessage,
@@ -18,15 +21,20 @@ class CartTab extends StatelessWidget {
     required this.onQuantityChanged,
     required this.onSelectedChanged,
     required this.onCheckout,
+    required this.onRequireLogin,
     this.onSelectAll,
+    this.onGoShopping,
   });
 
+  final bool isAuthenticated;
   final List<CartEntry> items;
   final bool isLoading;
   final String? errorMessage;
   final double total;
   final Future<void> Function() onRefresh;
   final ValueChanged<int> onDelete;
+  final VoidCallback onRequireLogin;
+  final VoidCallback? onGoShopping;
   final void Function(int cartItemId, int quantity) onQuantityChanged;
   final void Function(int cartItemId, bool selected) onSelectedChanged;
   final Future<void> Function() onCheckout;
@@ -41,7 +49,9 @@ class CartTab extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
 
     Widget body;
-    if (isLoading && items.isEmpty) {
+    if (!isAuthenticated) {
+      body = _AuthPrompt(onRequireLogin: onRequireLogin);
+    } else if (isLoading && items.isEmpty) {
       body = const Center(child: CircularProgressIndicator());
     } else if (errorMessage != null && items.isEmpty) {
       body = Center(
@@ -50,12 +60,14 @@ class CartTab extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline_rounded, size: 48, color: Colors.red.shade300),
+              Icon(Icons.error_outline_rounded,
+                  size: 48, color: AppTheme.error),
               const SizedBox(height: 16),
               Text(
                 errorMessage!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppTheme.textSecondary, height: 1.5),
+                style:
+                    const TextStyle(color: AppTheme.textSecondary, height: 1.5),
               ),
               const SizedBox(height: 20),
               FilledButton.icon(
@@ -72,26 +84,33 @@ class CartTab extends StatelessWidget {
         icon: Icons.shopping_bag_outlined,
         title: l10n.cartEmpty,
         description: l10n.cartEmptyDesc,
+        actionLabel: '쇼핑 시작하기',
+        onAction: onGoShopping,
       );
     } else {
       body = Column(
         children: [
+          const SizedBox(height: TabLayoutSpacing.contentTop),
           _SelectAllBar(
             allSelected: _allSelected,
             selectedCount: _selectedCount,
             totalCount: items.length,
-            onToggle: onSelectAll != null
-                ? () => onSelectAll!(!_allSelected)
-                : null,
+            onToggle:
+                onSelectAll != null ? () => onSelectAll!(!_allSelected) : null,
           ),
           const Divider(height: 1),
           Expanded(
             child: RefreshIndicator(
-              onRefresh: onRefresh,
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                onRefresh: onRefresh,
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(
+                    TabLayoutSpacing.horizontal,
+                    10,
+                    TabLayoutSpacing.horizontal,
+                    TabLayoutSpacing.contentBottom,
+                  ),
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
                 itemBuilder: (context, index) {
                   final item = items[index];
                   return Dismissible(
@@ -102,12 +121,13 @@ class CartTab extends StatelessWidget {
                       padding: const EdgeInsets.only(right: 20),
                       decoration: BoxDecoration(
                         color: Colors.red.shade400,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                       ),
                       child: const Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.delete_outline_rounded, color: Colors.white, size: 22),
+                          Icon(Icons.delete_outline_rounded,
+                              color: Colors.white, size: 22),
                           SizedBox(height: 2),
                           Text(
                             '삭제',
@@ -140,30 +160,13 @@ class CartTab extends StatelessWidget {
 
     return Column(
       children: [
-        Container(
-          color: AppTheme.surface,
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-          child: Row(
-            children: [
-              Text(
-                l10n.cartTitle,
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const Spacer(),
-              if (items.isNotEmpty)
-                Text(
-                  l10n.productCount(items.length),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-            ],
-          ),
+        TabHeader(
+          title: l10n.cartTitle,
+          badge: items.isNotEmpty ? '${items.length}' : null,
         ),
-        const Divider(height: 1),
         Expanded(child: body),
-        if (items.isNotEmpty) _CheckoutBar(total: total, onCheckout: onCheckout),
+        if (items.isNotEmpty)
+          _CheckoutBar(total: total, onCheckout: onCheckout),
       ],
     );
   }
@@ -186,7 +189,10 @@ class _SelectAllBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: AppTheme.surface,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: TabLayoutSpacing.horizontal,
+        vertical: 10,
+      ),
       child: Row(
         children: [
           GestureDetector(
@@ -200,7 +206,7 @@ class _SelectAllBar extends StatelessWidget {
                     value: allSelected,
                     onChanged: onToggle != null ? (_) => onToggle!() : null,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusXs),
                     ),
                     side: const BorderSide(color: AppTheme.border, width: 1.5),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -243,7 +249,7 @@ class _CartItemCard extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         border: item.selected
             ? Border.all(color: AppTheme.primary.withValues(alpha: 0.3))
             : Border.all(color: Colors.transparent),
@@ -401,6 +407,69 @@ class _CheckoutBar extends StatelessWidget {
   }
 }
 
+class _AuthPrompt extends StatelessWidget {
+  const _AuthPrompt({required this.onRequireLogin});
+
+  final VoidCallback onRequireLogin;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.07),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.shopping_bag_outlined,
+                size: 46,
+                color: AppTheme.primary.withValues(alpha: 0.5),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              l10n.authRequiredTitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.textPrimary,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              l10n.authRequiredDesc,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppTheme.textTertiary,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 28),
+            FilledButton(
+              onPressed: onRequireLogin,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+              ),
+              child: Text(l10n.signIn),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ImageThumb extends StatelessWidget {
   const _ImageThumb({required this.imageUrl, required this.label});
 
@@ -409,38 +478,14 @@ class _ImageThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: 68,
-        height: 68,
-        color: AppTheme.imagePlaceholder,
-        alignment: Alignment.center,
-        child: imageUrl != null && imageUrl!.isNotEmpty
-            ? Image.network(
-                imageUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _FallbackLabel(label: label),
-              )
-            : _FallbackLabel(label: label),
-      ),
-    );
-  }
-}
-
-class _FallbackLabel extends StatelessWidget {
-  const _FallbackLabel({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label.isEmpty ? '?' : label.substring(0, 1),
-      style: const TextStyle(
+    return SizedBox(
+      width: 68,
+      height: 68,
+      child: ProductImage(
+        imageUrl: imageUrl,
+        label: label,
+        borderRadius: AppTheme.radiusMd,
         fontSize: 26,
-        fontWeight: FontWeight.w900,
-        color: AppTheme.textSecondary,
       ),
     );
   }

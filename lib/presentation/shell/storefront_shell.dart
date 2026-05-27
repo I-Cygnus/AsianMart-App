@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:asian_mart_app/core/l10n/app_localizations.dart';
 import 'package:asian_mart_app/core/state/app_controller.dart';
 import 'package:asian_mart_app/core/state/app_scope.dart';
@@ -114,8 +115,8 @@ class _StorefrontShellState extends State<StorefrontShell> {
           product: product,
           onAddToCart: (quantity) =>
               _handleAddToCart(product, quantity: quantity),
-          onBuyNow: () async {
-            await _handleAddToCart(product, quantity: 1);
+          onBuyNow: (quantity) async {
+            await _handleAddToCart(product, quantity: quantity);
             if (!mounted) {
               return;
             }
@@ -156,23 +157,27 @@ class _StorefrontShellState extends State<StorefrontShell> {
               currentUserName: widget.controller.currentUser?.name,
               isAuthenticated: widget.controller.isAuthenticated,
               wishlistIds: widget.controller.wishlistedProductIds,
+              cartCount: widget.controller.cartItemCount,
               onSearchChanged: (value) => setState(() => _searchQuery = value),
               onSortChanged: (mode) => setState(() => _sortMode = mode),
               onRefresh: widget.controller.loadProducts,
               onOpenAuth: _openAuthPage,
+              onCartTap: () => setState(() => _currentIndex = 1),
               onProductTap: _showProduct,
               onToggleWishlist: _handleWishlistToggle,
               onAddToCart: _handleAddToCart,
             ),
             CartTab(
+              isAuthenticated: widget.controller.isAuthenticated,
               items: widget.controller.cartItems,
               isLoading: widget.controller.cartLoading,
               errorMessage: widget.controller.cartError,
               total: widget.controller.selectedCartTotal,
+              onRequireLogin: _openAuthPage,
               onRefresh: widget.controller.loadCart,
               onDelete: (cartItemId) async {
-                final error =
-                    await widget.controller.deleteCartItem(cartItemId: cartItemId);
+                final error = await widget.controller
+                    .deleteCartItem(cartItemId: cartItemId);
                 if (error != null && mounted) {
                   _showSnack(error);
                 }
@@ -195,6 +200,7 @@ class _StorefrontShellState extends State<StorefrontShell> {
                   _showSnack(error);
                 }
               },
+              onGoShopping: () => setState(() => _currentIndex = 0),
               onCheckout: _openCheckout,
               onSelectAll: (selectAll) async {
                 final targets = widget.controller.cartItems
@@ -240,7 +246,6 @@ class _StorefrontShellState extends State<StorefrontShell> {
               addresses: widget.controller.addresses,
               isLoading: widget.controller.profileLoading,
               errorMessage: widget.controller.profileError,
-              wishlistCount: widget.controller.wishlistItems.length,
               onRequireLogin: _openAuthPage,
               onRefresh: widget.controller.loadProfile,
               onLogout: widget.controller.logout,
@@ -260,7 +265,8 @@ class _StorefrontShellState extends State<StorefrontShell> {
                 );
               },
               onSetDefault: (addressId) async {
-                final error = await widget.controller.setDefaultAddress(addressId);
+                final error =
+                    await widget.controller.setDefaultAddress(addressId);
                 if (error != null && mounted) {
                   _showSnack(error);
                 }
@@ -281,9 +287,15 @@ class _StorefrontShellState extends State<StorefrontShell> {
             ),
           ];
 
-          return Scaffold(
-            body: SafeArea(child: pages[_currentIndex]),
-            bottomNavigationBar: NavigationBar(
+          return AnnotatedRegion<SystemUiOverlayStyle>(
+            value: const SystemUiOverlayStyle(
+              statusBarColor: Colors.transparent,
+              statusBarIconBrightness: Brightness.dark,
+              statusBarBrightness: Brightness.light,
+            ),
+            child: Scaffold(
+              body: SafeArea(top: false, child: pages[_currentIndex]),
+              bottomNavigationBar: NavigationBar(
               selectedIndex: _currentIndex,
               onDestinationSelected: (index) {
                 setState(() => _currentIndex = index);
@@ -318,6 +330,7 @@ class _StorefrontShellState extends State<StorefrontShell> {
                   label: l10n.navProfile,
                 ),
               ],
+            ),
             ),
           );
         },
