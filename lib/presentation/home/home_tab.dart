@@ -88,6 +88,7 @@ class HomeTab extends StatefulWidget {
     required this.onSortChanged,
     required this.onRefresh,
     required this.onOpenAuth,
+    required this.onProfileTap,
     required this.onCartTap,
     required this.onProductTap,
     required this.onToggleWishlist,
@@ -107,6 +108,7 @@ class HomeTab extends StatefulWidget {
   final ValueChanged<SortMode> onSortChanged;
   final Future<void> Function() onRefresh;
   final VoidCallback onOpenAuth;
+  final VoidCallback onProfileTap;
   final VoidCallback onCartTap;
   final ValueChanged<Product> onProductTap;
   final ValueChanged<int> onToggleWishlist;
@@ -260,6 +262,7 @@ class _HomeTabState extends State<HomeTab> {
             userName: widget.currentUserName,
             onCartTap: widget.onCartTap,
             onOpenAuth: widget.onOpenAuth,
+            onProfileTap: widget.onProfileTap,
           ),
         ),
         Expanded(child: _buildBody(l10n)),
@@ -409,6 +412,7 @@ class _HomeActions extends StatelessWidget {
     required this.userName,
     required this.onCartTap,
     required this.onOpenAuth,
+    required this.onProfileTap,
   });
 
   final int cartCount;
@@ -416,6 +420,7 @@ class _HomeActions extends StatelessWidget {
   final String? userName;
   final VoidCallback onCartTap;
   final VoidCallback onOpenAuth;
+  final VoidCallback onProfileTap;
 
   @override
   Widget build(BuildContext context) {
@@ -466,7 +471,7 @@ class _HomeActions extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(right: 6),
             child: GestureDetector(
-              onTap: onOpenAuth,
+              onTap: onProfileTap,
               child: Container(
                 width: 32,
                 height: 32,

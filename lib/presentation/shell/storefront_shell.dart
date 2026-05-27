@@ -162,6 +162,7 @@ class _StorefrontShellState extends State<StorefrontShell> {
               onSortChanged: (mode) => setState(() => _sortMode = mode),
               onRefresh: widget.controller.loadProducts,
               onOpenAuth: _openAuthPage,
+              onProfileTap: () => setState(() => _currentIndex = 3),
               onCartTap: () => setState(() => _currentIndex = 1),
               onProductTap: _showProduct,
               onToggleWishlist: _handleWishlistToggle,
