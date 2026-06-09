@@ -23,6 +23,14 @@ class AppLocalizations {
   static const _strings = <String, Map<String, String>>{
     // ── Navigation ────────────────────────────────────────────────────────────
     'navHome': {
+      'ko': '홈',
+      'en': 'Home',
+      'th': 'หน้าแรก',
+      'vi': 'Trang chủ',
+      'zh': '首页',
+      'ja': 'ホーム',
+    },
+    'navProducts': {
       'ko': '상품',
       'en': 'Products',
       'th': 'สินค้า',
@@ -517,6 +525,7 @@ class AppLocalizations {
 
   // Navigation
   String get navHome => _s('navHome');
+  String get navProducts => _s('navProducts');
   String get navCart => _s('navCart');
   String get navWishlist => _s('navWishlist');
   String get navProfile => _s('navProfile');

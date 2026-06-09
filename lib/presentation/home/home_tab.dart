@@ -925,7 +925,7 @@ class _GridProductCard extends StatelessWidget {
                 AspectRatio(
                   aspectRatio: 1,
                   child: ProductImage(
-                    imageUrl: product.imageUrl,
+                    imageUrl: product.thumbnailUrl,
                     label: product.name,
                     unavailable: unavailable,
                     borderRadius: 0,

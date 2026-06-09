@@ -6,7 +6,9 @@ import 'package:asian_mart_app/domain/entities/address.dart';
 import 'package:asian_mart_app/domain/entities/app_user.dart';
 import 'package:asian_mart_app/domain/entities/cart_entry.dart';
 import 'package:asian_mart_app/domain/entities/product.dart';
+import 'package:asian_mart_app/domain/entities/product_category.dart';
 import 'package:asian_mart_app/domain/entities/wishlist_item.dart';
+import 'package:asian_mart_app/domain/enums/sort_mode.dart';
 
 class AppController extends ChangeNotifier {
   AppController(this._apiClient, this._storage);
@@ -18,6 +20,8 @@ class AppController extends ChangeNotifier {
 
   String? _accessToken;
   String? _guestToken;
+
+  static const int _listPageSize = 20;
 
   bool _bootstrapped = false;
   bool _productsLoading = false;
@@ -37,6 +41,18 @@ class AppController extends ChangeNotifier {
   List<Address> _addresses = const [];
   AppUser? _currentUser;
 
+  // ── '상품' 탭(서버 주도 검색/필터/정렬/페이지네이션) 상태 ──────────────────
+  List<ProductCategory> _categories = const [];
+  List<Product> _listProducts = const [];
+  bool _listLoading = false;
+  bool _listLoadingMore = false;
+  String? _listError;
+  int _listPage = 0;
+  bool _listHasMore = true;
+  int? _listCategoryId;
+  String _listKeyword = '';
+  SortMode _listSort = SortMode.latest;
+
   bool get bootstrapped => _bootstrapped;
   bool get productsLoading => _productsLoading;
   bool get cartLoading => _cartLoading;
@@ -50,6 +66,15 @@ class AppController extends ChangeNotifier {
   String? get profileError => _profileError;
 
   List<Product> get products => _products;
+  List<ProductCategory> get categories => _categories;
+  List<Product> get listProducts => _listProducts;
+  bool get listLoading => _listLoading;
+  bool get listLoadingMore => _listLoadingMore;
+  String? get listError => _listError;
+  bool get listHasMore => _listHasMore;
+  int? get listCategoryId => _listCategoryId;
+  String get listKeyword => _listKeyword;
+  SortMode get listSort => _listSort;
   List<CartEntry> get cartItems => _cartItems;
   List<WishlistItem> get wishlistItems => _wishlistItems;
   List<Address> get addresses => _addresses;
@@ -101,6 +126,8 @@ class AppController extends ChangeNotifier {
 
     await Future.wait([
       loadProducts(),
+      loadCategories(),
+      refreshProductList(),
       loadCart(),
     ]);
 
@@ -114,11 +141,84 @@ class AppController extends ChangeNotifier {
     _productsError = null;
     notifyListeners();
     try {
-      _products = await _apiClient.fetchProducts();
+      final result = await _apiClient.fetchProducts();
+      _products = result.items;
     } catch (error) {
       _productsError = _messageOf(error);
     } finally {
       _productsLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadCategories() async {
+    try {
+      _categories = await _apiClient.fetchRootCateogires();
+      notifyListeners();
+    } catch (_) {
+      // 카테고리 로드 실패는 치명적이지 않으므로 조용히 무시한다.
+    }
+  }
+
+  /// 검색어/카테고리/정렬을 적용해 '상품' 탭 목록을 첫 페이지부터 다시 불러온다.
+  Future<void> applyProductFilters({
+    int? categoryId,
+    String? keyword,
+    SortMode? sort,
+  }) async {
+    _listCategoryId = categoryId;
+    _listKeyword = keyword ?? '';
+    if (sort != null) {
+      _listSort = sort;
+    }
+    await _fetchProductListPage(reset: true);
+  }
+
+  /// 현재 필터를 유지한 채 목록을 새로고침한다.
+  Future<void> refreshProductList() => _fetchProductListPage(reset: true);
+
+  /// 무한 스크롤: 다음 페이지를 불러와 기존 목록에 이어 붙인다.
+  Future<void> loadMoreProducts() async {
+    if (_listLoading || _listLoadingMore || !_listHasMore) {
+      return;
+    }
+    await _fetchProductListPage(reset: false);
+  }
+
+  Future<void> _fetchProductListPage({required bool reset}) async {
+    if (reset) {
+      _listLoading = true;
+      _listError = null;
+      _listPage = 0;
+      _listHasMore = true;
+    } else {
+      _listLoadingMore = true;
+    }
+    notifyListeners();
+
+    final keyword = _listKeyword.trim();
+    try {
+      final result = await _apiClient.fetchProducts(
+        categoryId: _listCategoryId,
+        keyword: keyword.isEmpty ? null : keyword,
+        page: _listPage,
+        size: _listPageSize,
+        sort: _listSort.apiSort,
+      );
+      _listProducts =
+          reset ? result.items : [..._listProducts, ...result.items];
+      _listHasMore = !result.isLast;
+      if (_listHasMore) {
+        _listPage += 1;
+      }
+    } catch (error) {
+      _listError = _messageOf(error);
+      if (reset) {
+        _listProducts = const [];
+      }
+    } finally {
+      _listLoading = false;
+      _listLoadingMore = false;
       notifyListeners();
     }
   }

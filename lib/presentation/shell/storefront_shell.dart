@@ -10,6 +10,7 @@ import 'package:asian_mart_app/presentation/cart/cart_tab.dart';
 import 'package:asian_mart_app/presentation/checkout/checkout_page.dart';
 import 'package:asian_mart_app/presentation/home/home_tab.dart';
 import 'package:asian_mart_app/presentation/product_detail/product_detail_page.dart';
+import 'package:asian_mart_app/presentation/product_list/product_list_page.dart';
 import 'package:asian_mart_app/presentation/profile/profile_tab.dart';
 import 'package:asian_mart_app/presentation/settings/language_settings_page.dart';
 import 'package:asian_mart_app/presentation/wishlist/wishlist_tab.dart';
@@ -162,8 +163,41 @@ class _StorefrontShellState extends State<StorefrontShell> {
               onSortChanged: (mode) => setState(() => _sortMode = mode),
               onRefresh: widget.controller.loadProducts,
               onOpenAuth: _openAuthPage,
-              onProfileTap: () => setState(() => _currentIndex = 3),
-              onCartTap: () => setState(() => _currentIndex = 1),
+              onProfileTap: () => setState(() => _currentIndex = 4),
+              onCartTap: () => setState(() => _currentIndex = 2),
+              onProductTap: _showProduct,
+              onToggleWishlist: _handleWishlistToggle,
+              onAddToCart: _handleAddToCart,
+            ),
+            ProductListPage(
+              products: widget.controller.listProducts,
+              isLoading: widget.controller.listLoading,
+              isLoadingMore: widget.controller.listLoadingMore,
+              hasMore: widget.controller.listHasMore,
+              errorMessage: widget.controller.listError,
+              categories: widget.controller.categories,
+              selectedCategoryId: widget.controller.listCategoryId,
+              searchQuery: widget.controller.listKeyword,
+              sortMode: widget.controller.listSort,
+              wishlistIds: widget.controller.wishlistedProductIds,
+              onRefresh: widget.controller.refreshProductList,
+              onSearch: (keyword) => widget.controller.applyProductFilters(
+                categoryId: widget.controller.listCategoryId,
+                keyword: keyword,
+                sort: widget.controller.listSort,
+              ),
+              onSelectCategory: (categoryId) =>
+                  widget.controller.applyProductFilters(
+                categoryId: categoryId,
+                keyword: widget.controller.listKeyword,
+                sort: widget.controller.listSort,
+              ),
+              onSortChanged: (mode) => widget.controller.applyProductFilters(
+                categoryId: widget.controller.listCategoryId,
+                keyword: widget.controller.listKeyword,
+                sort: mode,
+              ),
+              onLoadMore: widget.controller.loadMoreProducts,
               onProductTap: _showProduct,
               onToggleWishlist: _handleWishlistToggle,
               onAddToCart: _handleAddToCart,
@@ -303,9 +337,14 @@ class _StorefrontShellState extends State<StorefrontShell> {
               },
               destinations: [
                 NavigationDestination(
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: const Icon(Icons.home_rounded),
+                  label: l10n.navHome,
+                ),
+                NavigationDestination(
                   icon: const Icon(Icons.storefront_outlined),
                   selectedIcon: const Icon(Icons.storefront_rounded),
-                  label: l10n.navHome,
+                  label: l10n.navProducts,
                 ),
                 NavigationDestination(
                   icon: Badge.count(

@@ -8,6 +8,7 @@ import 'package:asian_mart_app/domain/entities/app_user.dart';
 import 'package:asian_mart_app/domain/entities/cart_entry.dart';
 import 'package:asian_mart_app/domain/entities/cart_snapshot.dart';
 import 'package:asian_mart_app/domain/entities/product.dart';
+import 'package:asian_mart_app/domain/entities/product_category.dart';
 import 'package:asian_mart_app/domain/entities/wishlist_item.dart';
 
 class ApiClient {
@@ -15,32 +16,59 @@ class ApiClient {
 
   final HttpClient _httpClient = HttpClient();
 
-  Future<List<Product>> fetchProducts() async {
-    final products = <Product>[];
-    var page = 0;
+  Future<List<ProductCategory>> fetchRootCateogires() async {
+    final response = await _send('GET', '/api/categories/root');
 
-    while (true) {
-      final response = await _send('GET', '/api/products', query: {
-        'page': '$page',
-        'size': '100',
-      });
-      final body = _asMap(response.data);
-      final content = body['content'] as List<dynamic>? ?? const [];
-      products.addAll(
-        content.whereType<Map<String, dynamic>>().map(Product.fromJson),
-      );
+    if (response.data is List) {
+      return (response.data as List)
+          .whereType<Map<String, dynamic>>()
+          .map(ProductCategory.fromJson)
+          .toList();
+    }
+    return [];
+  }
 
-      final isLastPage = body['last'] as bool? ?? false;
-      final totalPages = (body['totalPages'] as num?)?.toInt();
-      if (content.isEmpty ||
-          isLastPage ||
-          (totalPages != null && page >= totalPages - 1)) {
-        break;
-      }
-      page += 1;
+  Future<PagedProducts> fetchProducts({
+    num? categoryId,
+    String? keyword,
+    String? searchField,
+    num? page,
+    num? size,
+    String? sort,
+  }) async {
+    final Map<String, String> query = {};
+    if (categoryId != null) {
+      query['categoryId'] = '$categoryId';
+    }
+    if (keyword != null && keyword.isNotEmpty) {
+      query['keyword'] = keyword;
+    }
+    if (searchField != null && searchField.isNotEmpty) {
+      query['searchField'] = searchField;
     }
 
-    return products;
+    query['page'] = page != null ? '$page' : '0';
+    query['size'] = size != null ? '$size' : '4';
+
+    if (sort != null && sort.isNotEmpty) {
+      query['sort'] = sort;
+    }
+
+    final response = await _send('GET', '/api/products', query: query);
+    final body = _asMap(response.data);
+    final content = body['content'] as List<dynamic>? ?? const [];
+    final items = content
+        .whereType<Map<String, dynamic>>()
+        .map(Product.fromJson)
+        .toList();
+
+    return PagedProducts(
+      items: items,
+      page: (body['number'] as num?)?.toInt() ?? (page?.toInt() ?? 0),
+      isLast: body['last'] as bool? ?? true,
+      totalElements: (body['totalElements'] as num?)?.toInt() ?? items.length,
+      totalPages: (body['totalPages'] as num?)?.toInt() ?? 1,
+    );
   }
 
   Future<String> login({
@@ -383,4 +411,21 @@ class _ApiResponse {
 
   final int statusCode;
   final Object? data;
+}
+
+/// 상품 목록 조회 결과. 페이지네이션 메타데이터를 함께 담는다.
+class PagedProducts {
+  const PagedProducts({
+    required this.items,
+    required this.page,
+    required this.isLast,
+    required this.totalElements,
+    required this.totalPages,
+  });
+
+  final List<Product> items;
+  final int page;
+  final bool isLast;
+  final int totalElements;
+  final int totalPages;
 }

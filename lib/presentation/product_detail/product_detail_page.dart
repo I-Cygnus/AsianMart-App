@@ -74,7 +74,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 height: 320,
                 width: double.infinity,
                 child: ProductImage(
-                  imageUrl: product.imageUrl,
+                  imageUrl: product.thumbnailUrl,
                   label: product.name,
                   borderRadius: 0,
                   fontSize: 110,
