@@ -28,6 +28,23 @@ class ApiClient {
     return [];
   }
 
+  Future<List<ProductCategory>> fetchChildCategories(int parentId) async {
+    final response = await _send('GET', '/api/categories/child/$parentId');
+
+    if (response.data is List) {
+      return (response.data as List)
+          .whereType<Map<String, dynamic>>()
+          .map(ProductCategory.fromJson)
+          .toList();
+    }
+    return [];
+  }
+
+  Future<Product> fetchProduct({required int productId}) async {
+    final response = await _send('GET', '/api/products/$productId');
+    return Product.fromJson(_asMap(response.data));
+  }
+
   Future<PagedProducts> fetchProducts({
     num? categoryId,
     String? keyword,
@@ -276,18 +293,36 @@ class ApiClient {
     return _cartSnapshotFromResponse(response.data);
   }
 
-  Future<List<WishlistItem>> fetchWishlist(String accessToken) async {
-    final response = await _send(
-      'GET',
-      '/api/wishlist',
-      accessToken: accessToken,
-    );
+  Future<PagedWishlistItems> fetchWishlists({
+    String? accessToken,
+    num? page,
+    num? size,
+    String? sort,
+  }) async {
+    final Map<String, String> query = {};
+
+    query['page'] = page != null ? '$page' : '0';
+    query['size'] = size != null ? '$size' : '4';
+
+    if (sort != null && sort.isNotEmpty) {
+      query['sort'] = sort;
+    }
+
+    final response = await _send('GET', '/api/wishlist/page', query: query, accessToken: accessToken);
     final body = _asMap(response.data);
-    final items = body['items'] as List<dynamic>? ?? const [];
-    return items
+    final content = body['content'] as List<dynamic>? ?? const [];
+    final items = content
         .whereType<Map<String, dynamic>>()
         .map(WishlistItem.fromJson)
         .toList();
+
+    return PagedWishlistItems(
+      items: items,
+      page: (body['number'] as num?)?.toInt() ?? (page?.toInt() ?? 0),
+      isLast: body['last'] as bool? ?? true,
+      totalElements: (body['totalElements'] as num?)?.toInt() ?? items.length,
+      totalPages: (body['totalPages'] as num?)?.toInt() ?? 1,
+    );
   }
 
   Future<void> toggleWishlist({
@@ -424,6 +459,22 @@ class PagedProducts {
   });
 
   final List<Product> items;
+  final int page;
+  final bool isLast;
+  final int totalElements;
+  final int totalPages;
+}
+
+class PagedWishlistItems {
+  const PagedWishlistItems({
+    required this.items,
+    required this.page,
+    required this.isLast,
+    required this.totalElements,
+    required this.totalPages,
+  });
+
+  final List<WishlistItem> items;
   final int page;
   final bool isLast;
   final int totalElements;
