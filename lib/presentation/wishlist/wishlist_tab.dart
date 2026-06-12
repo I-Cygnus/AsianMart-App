@@ -117,7 +117,7 @@ class _WishlistItemCard extends StatelessWidget {
                 width: 72,
                 height: 72,
                 child: ProductImage(
-                  imageUrl: item.imageUrl,
+                  imageUrl: item.thumbnailUrl,
                   label: item.productName,
                   borderRadius: AppTheme.radiusMd,
                   fontSize: 28,

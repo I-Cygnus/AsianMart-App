@@ -223,6 +223,14 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  Future<Product> loadProductDetail(int productId) async {
+    try {
+      return await _apiClient.fetchProduct(productId: productId);
+    } catch (error) {
+      throw ApiException(_messageOf(error));
+    }
+  }
+
   Future<void> loadCart() async {
     _cartLoading = true;
     _cartError = null;

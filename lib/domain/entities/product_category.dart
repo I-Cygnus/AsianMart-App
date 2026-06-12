@@ -2,10 +2,10 @@ class ProductCategory {
     const ProductCategory({
         required this.id,
         required this.name,
-        required this.parentId,
+        this.parentId,
     });
 
-    final int id;
+    final int? id;
     final String name;
     final int? parentId;
 
@@ -13,7 +13,7 @@ class ProductCategory {
     return ProductCategory(
             id: (json['id'] as num?)?.toInt() ?? 0,
             name: json['name'] as String,
-            parentId: (json['parentId'] as num?)?.toInt() ?? null
+            parentId: (json['parentId'] as num?)?.toInt()
         );
     }
 }

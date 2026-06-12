@@ -28,6 +28,11 @@ class ApiClient {
     return [];
   }
 
+  Future<Product> fetchProduct({required int productId}) async {
+    final response = await _send('GET', '/api/products/$productId');
+    return Product.fromJson(_asMap(response.data));
+  }
+
   Future<PagedProducts> fetchProducts({
     num? categoryId,
     String? keyword,

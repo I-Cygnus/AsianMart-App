@@ -113,11 +113,13 @@ class _StorefrontShellState extends State<StorefrontShell> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ProductDetailPage(
-          product: product,
-          onAddToCart: (quantity) =>
-              _handleAddToCart(product, quantity: quantity),
-          onBuyNow: (quantity) async {
-            await _handleAddToCart(product, quantity: quantity);
+          initialProduct: product,
+          onLoadDetail: () =>
+              widget.controller.loadProductDetail(product.id),
+          onAddToCart: (detailProduct, quantity) =>
+              _handleAddToCart(detailProduct, quantity: quantity),
+          onBuyNow: (detailProduct, quantity) async {
+            await _handleAddToCart(detailProduct, quantity: quantity);
             if (!mounted) {
               return;
             }
@@ -266,13 +268,19 @@ class _StorefrontShellState extends State<StorefrontShell> {
                 }
                 await _handleAddToCart(product);
               },
-              onOpenProduct: (productId) {
-                final product = widget.controller.findProduct(productId);
-                if (product == null) {
-                  _showSnack('상품 정보를 찾을 수 없습니다.');
+              onOpenProduct: (productId) async {
+                final cached = widget.controller.findProduct(productId);
+                if (cached != null) {
+                  _showProduct(cached);
                   return;
                 }
-                _showProduct(product);
+                try {
+                  final detail = await widget.controller.loadProductDetail(productId);
+                  if (!mounted) return;
+                  _showProduct(detail);
+                } catch (_) {
+                  _showSnack('상품 정보를 찾을 수 없습니다.');
+                }
               },
             ),
             ProfileTab(

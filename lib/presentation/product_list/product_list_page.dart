@@ -11,30 +11,6 @@ import 'package:asian_mart_app/presentation/widgets/empty_state.dart';
 import 'package:asian_mart_app/presentation/widgets/product_image.dart';
 import 'package:asian_mart_app/presentation/widgets/tab_header.dart';
 
-// ── Category definition ───────────────────────────────────────────────────────
-
-class _Category {
-  const _Category({required this.id, required this.label, required this.icon});
-  final int? id;
-  final String label;
-  final String icon;
-}
-
-const _kCategoryAll = _Category(id: null, label: '전체', icon: '🛒');
-
-const _kCategoryLabels = <int, (String, String)>{
-  1: ('쌀/잡곡', '🌾'),
-  2: ('소스/양념', '🫙'),
-  3: ('과자/간식', '🍘'),
-  4: ('음료', '🧃'),
-  5: ('라면/면류', '🍜'),
-  6: ('반찬/김치', '🥬'),
-  7: ('냉동식품', '🧊'),
-  8: ('육류/해산물', '🐟'),
-  9: ('유제품', '🥛'),
-  10: ('건강식품', '🌿'),
-};
-
 // ── ProductListPage ───────────────────────────────────────────────────────────
 
 /// '상품' 탭 본문. 검색 / 카테고리·정렬 필터·정렬은 모두 서버 API 호출로 처리되며,
@@ -110,21 +86,6 @@ class _ProductListPageState extends State<ProductListPage> {
     super.dispose();
   }
 
-  // ── Categories (서버에서 받은 카테고리 + 로컬 아이콘/라벨) ────────────────────
-
-  List<_Category> get _categories {
-    return [
-      _kCategoryAll,
-      ...widget.categories.map((c) {
-        final entry = _kCategoryLabels[c.id];
-        return _Category(
-          id: c.id,
-          label: entry?.$1 ?? c.name,
-          icon: entry?.$2 ?? '📦',
-        );
-      }),
-    ];
-  }
 
   // ── Pagination (scroll-driven) ──────────────────────────────────────────────
 
@@ -147,7 +108,7 @@ class _ProductListPageState extends State<ProductListPage> {
     });
   }
 
-  void _selectCategory(_Category cat) {
+  void _selectCategory(ProductCategory cat) {
     if (cat.id == widget.selectedCategoryId) {
       return;
     }
@@ -253,6 +214,10 @@ class _ProductListPageState extends State<ProductListPage> {
     }
 
     final products = widget.products;
+    final displayCategories = [
+        ProductCategory(id: null, name: '전체'),
+        ...widget.categories
+    ];
     final hasMore = widget.hasMore;
 
     return RefreshIndicator(
@@ -267,10 +232,10 @@ class _ProductListPageState extends State<ProductListPage> {
               onChanged: _onSearchChanged,
             ),
           ),
-          if (_categories.length > 1)
+          if (displayCategories.length > 1)
             SliverToBoxAdapter(
               child: _CategoryFilterBar(
-                categories: _categories,
+                categories: displayCategories,
                 selected: widget.selectedCategoryId,
                 allSelected: widget.selectedCategoryId == null,
                 onSelect: _selectCategory,
@@ -412,10 +377,10 @@ class _CategoryFilterBar extends StatelessWidget {
     required this.onSelect,
   });
 
-  final List<_Category> categories;
+  final List<ProductCategory> categories;
   final int? selected;
   final bool allSelected;
-  final ValueChanged<_Category> onSelect;
+  final ValueChanged<ProductCategory> onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -448,10 +413,9 @@ class _CategoryFilterBar extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(cat.icon, style: const TextStyle(fontSize: 14)),
                       const SizedBox(width: 6),
                       Text(
-                        cat.label,
+                        cat.name,
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight:
