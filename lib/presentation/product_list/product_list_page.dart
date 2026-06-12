@@ -22,6 +22,7 @@ class ProductListPage extends StatefulWidget {
     required this.isLoading,
     required this.isLoadingMore,
     required this.hasMore,
+    required this.totalCount,
     required this.errorMessage,
     required this.categories,
     required this.selectedCategoryId,
@@ -42,6 +43,7 @@ class ProductListPage extends StatefulWidget {
   final bool isLoading;
   final bool isLoadingMore;
   final bool hasMore;
+  final int totalCount;
   final String? errorMessage;
   final List<ProductCategory> categories;
   final int? selectedCategoryId;
@@ -243,7 +245,7 @@ class _ProductListPageState extends State<ProductListPage> {
             ),
           SliverToBoxAdapter(
             child: _ResultBar(
-              count: products.length,
+              count: widget.totalCount,
               sortMode: widget.sortMode,
               onSortTap: () => _showSortSheet(l10n),
               l10n: l10n,

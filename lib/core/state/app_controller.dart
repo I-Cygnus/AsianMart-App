@@ -49,6 +49,7 @@ class AppController extends ChangeNotifier {
   String? _listError;
   int _listPage = 0;
   bool _listHasMore = true;
+  int _listTotalCount = 0;
   int? _listCategoryId;
   String _listKeyword = '';
   SortMode _listSort = SortMode.latest;
@@ -77,6 +78,7 @@ class AppController extends ChangeNotifier {
   bool get listLoadingMore => _listLoadingMore;
   String? get listError => _listError;
   bool get listHasMore => _listHasMore;
+  int get listTotalCount => _listTotalCount;
   int? get listCategoryId => _listCategoryId;
   String get listKeyword => _listKeyword;
   SortMode get listSort => _listSort;
@@ -217,6 +219,9 @@ class AppController extends ChangeNotifier {
       );
       _listProducts =
           reset ? result.items : [..._listProducts, ...result.items];
+      if (reset) {
+        _listTotalCount = result.totalElements;
+      }
       _listHasMore = !result.isLast;
       if (_listHasMore) {
         _listPage += 1;
@@ -225,6 +230,7 @@ class AppController extends ChangeNotifier {
       _listError = _messageOf(error);
       if (reset) {
         _listProducts = const [];
+        _listTotalCount = 0;
       }
     } finally {
       _listLoading = false;

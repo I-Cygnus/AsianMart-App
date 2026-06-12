@@ -176,6 +176,7 @@ class _StorefrontShellState extends State<StorefrontShell> {
               isLoading: widget.controller.listLoading,
               isLoadingMore: widget.controller.listLoadingMore,
               hasMore: widget.controller.listHasMore,
+              totalCount: widget.controller.listTotalCount,
               errorMessage: widget.controller.listError,
               categories: widget.controller.categories,
               selectedCategoryId: widget.controller.listCategoryId,
