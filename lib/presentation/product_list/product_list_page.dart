@@ -11,30 +11,6 @@ import 'package:asian_mart_app/presentation/widgets/empty_state.dart';
 import 'package:asian_mart_app/presentation/widgets/product_image.dart';
 import 'package:asian_mart_app/presentation/widgets/tab_header.dart';
 
-// ── Category definition ───────────────────────────────────────────────────────
-
-class _Category {
-  const _Category({required this.id, required this.label, required this.icon});
-  final int? id;
-  final String label;
-  final String icon;
-}
-
-const _kCategoryAll = _Category(id: null, label: '전체', icon: '🛒');
-
-const _kCategoryLabels = <int, (String, String)>{
-  1: ('쌀/잡곡', '🌾'),
-  2: ('소스/양념', '🫙'),
-  3: ('과자/간식', '🍘'),
-  4: ('음료', '🧃'),
-  5: ('라면/면류', '🍜'),
-  6: ('반찬/김치', '🥬'),
-  7: ('냉동식품', '🧊'),
-  8: ('육류/해산물', '🐟'),
-  9: ('유제품', '🥛'),
-  10: ('건강식품', '🌿'),
-};
-
 // ── ProductListPage ───────────────────────────────────────────────────────────
 
 /// '상품' 탭 본문. 검색 / 카테고리·정렬 필터·정렬은 모두 서버 API 호출로 처리되며,
@@ -46,15 +22,17 @@ class ProductListPage extends StatefulWidget {
     required this.isLoading,
     required this.isLoadingMore,
     required this.hasMore,
+    required this.totalCount,
     required this.errorMessage,
-    required this.categories,
-    required this.selectedCategoryId,
+    required this.categoryLevels,
+    required this.categoryPath,
+    required this.loadingChildOf,
     required this.searchQuery,
     required this.sortMode,
     required this.wishlistIds,
     required this.onRefresh,
     required this.onSearch,
-    required this.onSelectCategory,
+    required this.onSelectCategoryAtDepth,
     required this.onSortChanged,
     required this.onLoadMore,
     required this.onProductTap,
@@ -66,15 +44,18 @@ class ProductListPage extends StatefulWidget {
   final bool isLoading;
   final bool isLoadingMore;
   final bool hasMore;
+  final int totalCount;
   final String? errorMessage;
-  final List<ProductCategory> categories;
-  final int? selectedCategoryId;
+  final List<List<ProductCategory>> categoryLevels;
+  final List<int> categoryPath;
+  final int? loadingChildOf;
   final String searchQuery;
   final SortMode sortMode;
   final Set<int> wishlistIds;
   final Future<void> Function() onRefresh;
   final ValueChanged<String> onSearch;
-  final ValueChanged<int?> onSelectCategory;
+  final Future<void> Function(int depth, int? categoryId)
+      onSelectCategoryAtDepth;
   final ValueChanged<SortMode> onSortChanged;
   final Future<void> Function() onLoadMore;
   final ValueChanged<Product> onProductTap;
@@ -86,12 +67,9 @@ class ProductListPage extends StatefulWidget {
 }
 
 class _ProductListPageState extends State<ProductListPage> {
-  static const Duration _searchDebounce = Duration(milliseconds: 400);
-
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  Timer? _debounce;
 
   @override
   void initState() {
@@ -102,7 +80,6 @@ class _ProductListPageState extends State<ProductListPage> {
 
   @override
   void dispose() {
-    _debounce?.cancel();
     _scrollController
       ..removeListener(_onScroll)
       ..dispose();
@@ -110,21 +87,6 @@ class _ProductListPageState extends State<ProductListPage> {
     super.dispose();
   }
 
-  // ── Categories (서버에서 받은 카테고리 + 로컬 아이콘/라벨) ────────────────────
-
-  List<_Category> get _categories {
-    return [
-      _kCategoryAll,
-      ...widget.categories.map((c) {
-        final entry = _kCategoryLabels[c.id];
-        return _Category(
-          id: c.id,
-          label: entry?.$1 ?? c.name,
-          icon: entry?.$2 ?? '📦',
-        );
-      }),
-    ];
-  }
 
   // ── Pagination (scroll-driven) ──────────────────────────────────────────────
 
@@ -140,19 +102,22 @@ class _ProductListPageState extends State<ProductListPage> {
     }
   }
 
-  void _onSearchChanged(String value) {
-    _debounce?.cancel();
-    _debounce = Timer(_searchDebounce, () {
-      widget.onSearch(value.trim());
-    });
+  void _onSearchSubmit() {
+    widget.onSearch(_searchController.text.trim());
   }
 
-  void _selectCategory(_Category cat) {
-    if (cat.id == widget.selectedCategoryId) {
+  void _selectCategoryAtDepth(int depth, ProductCategory cat) {
+    final selectedAtDepth =
+        depth < widget.categoryPath.length ? widget.categoryPath[depth] : null;
+
+    final isReselectingIntermediate =
+        cat.id == selectedAtDepth &&
+        widget.categoryPath.length > depth + 1;
+
+    if (cat.id == selectedAtDepth && !isReselectingIntermediate) {
       return;
     }
-    _debounce?.cancel();
-    widget.onSelectCategory(cat.id);
+    widget.onSelectCategoryAtDepth(depth, cat.id);
   }
 
   void _showSortSheet(AppLocalizations l10n) {
@@ -254,6 +219,7 @@ class _ProductListPageState extends State<ProductListPage> {
 
     final products = widget.products;
     final hasMore = widget.hasMore;
+    final categoryLevels = widget.categoryLevels;
 
     return RefreshIndicator(
       onRefresh: widget.onRefresh,
@@ -264,21 +230,30 @@ class _ProductListPageState extends State<ProductListPage> {
             child: _SearchBar(
               controller: _searchController,
               hintText: l10n.searchProductHint,
-              onChanged: _onSearchChanged,
+              onSubmitted: _onSearchSubmit,
+              onClear: () => widget.onSearch(''),
             ),
           ),
-          if (_categories.length > 1)
-            SliverToBoxAdapter(
-              child: _CategoryFilterBar(
-                categories: _categories,
-                selected: widget.selectedCategoryId,
-                allSelected: widget.selectedCategoryId == null,
-                onSelect: _selectCategory,
+          if (categoryLevels.isNotEmpty && categoryLevels.first.length > 1)
+            for (var depth = 0; depth < categoryLevels.length; depth++)
+              SliverToBoxAdapter(
+                child: _CategoryFilterBar(
+                  categories: categoryLevels[depth],
+                  selected: depth < widget.categoryPath.length
+                      ? widget.categoryPath[depth]
+                      : null,
+                  allSelected: depth == 0 && widget.categoryPath.isEmpty,
+                  compact: depth > 0,
+                  onSelect: (cat) => _selectCategoryAtDepth(depth, cat),
+                ),
               ),
+          if (widget.loadingChildOf != null)
+            const SliverToBoxAdapter(
+              child: _SubCategoryLoadingBar(),
             ),
           SliverToBoxAdapter(
             child: _ResultBar(
-              count: products.length,
+              count: widget.totalCount,
               sortMode: widget.sortMode,
               onSortTap: () => _showSortSheet(l10n),
               l10n: l10n,
@@ -327,12 +302,14 @@ class _SearchBar extends StatefulWidget {
   const _SearchBar({
     required this.controller,
     required this.hintText,
-    required this.onChanged,
+    required this.onSubmitted,
+    this.onClear,
   });
 
   final TextEditingController controller;
   final String hintText;
-  final ValueChanged<String> onChanged;
+  final VoidCallback onSubmitted;
+  final VoidCallback? onClear;
 
   @override
   State<_SearchBar> createState() => _SearchBarState();
@@ -373,7 +350,7 @@ class _SearchBarState extends State<_SearchBar> {
         ),
         child: TextField(
           controller: widget.controller,
-          onChanged: widget.onChanged,
+          onSubmitted: (_) => widget.onSubmitted,
           textInputAction: TextInputAction.search,
           style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
           decoration: InputDecoration(
@@ -383,15 +360,26 @@ class _SearchBarState extends State<_SearchBar> {
             prefixIcon: const Icon(Icons.search_rounded,
                 size: 20, color: AppTheme.textTertiary),
             suffixIcon: _hasText
-                ? IconButton(
-                    icon: const Icon(Icons.cancel_rounded,
-                        size: 18, color: AppTheme.textTertiary),
-                    onPressed: () {
-                      widget.controller.clear();
-                      widget.onChanged('');
-                    },
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.search_rounded, size: 20),
+                        onPressed: widget.onSubmitted,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.cancel_rounded, size: 18),
+                        onPressed: () {
+                          widget.controller.clear();
+                          widget.onClear?.call(); // 또는 widget.onSubmitted()로 빈 검색 실행
+                        },
+                      ),
+                    ],
                   )
-                : null,
+                : IconButton(
+                    icon: const Icon(Icons.search_rounded, size: 20),
+                    onPressed: widget.onSubmitted,
+                  ),
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 12),
             isDense: true,
@@ -410,18 +398,28 @@ class _CategoryFilterBar extends StatelessWidget {
     required this.selected,
     required this.allSelected,
     required this.onSelect,
+    this.compact = false,
   });
 
-  final List<_Category> categories;
+  final List<ProductCategory> categories;
   final int? selected;
   final bool allSelected;
-  final ValueChanged<_Category> onSelect;
+  final ValueChanged<ProductCategory> onSelect;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    final chipPadding = compact
+        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 7)
+        : const EdgeInsets.symmetric(horizontal: 14, vertical: 9);
+    final fontSize = compact ? 12.0 : 13.0;
+
     return Container(
       color: AppTheme.background,
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: EdgeInsets.only(
+        bottom: compact ? 2 : 4,
+        left: compact ? 8 : 0,
+      ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -436,8 +434,7 @@ class _CategoryFilterBar extends StatelessWidget {
                 onTap: () => onSelect(cat),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  padding: chipPadding,
                   decoration: BoxDecoration(
                     color: isActive ? AppTheme.primary : AppTheme.surface,
                     borderRadius: BorderRadius.circular(AppTheme.radiusFull),
@@ -448,12 +445,11 @@ class _CategoryFilterBar extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(cat.icon, style: const TextStyle(fontSize: 14)),
                       const SizedBox(width: 6),
                       Text(
-                        cat.label,
+                        cat.name,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: fontSize,
                           fontWeight:
                               isActive ? FontWeight.w700 : FontWeight.w500,
                           color:
@@ -466,6 +462,30 @@ class _CategoryFilterBar extends StatelessWidget {
               ),
             );
           }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _SubCategoryLoadingBar extends StatelessWidget {
+  const _SubCategoryLoadingBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppTheme.background,
+      padding: const EdgeInsets.fromLTRB(24, 0, 16, 4),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: const [
+            _SkeletonBox(width: 56, height: 30, radius: 999),
+            SizedBox(width: 8),
+            _SkeletonBox(width: 72, height: 30, radius: 999),
+            SizedBox(width: 8),
+            _SkeletonBox(width: 64, height: 30, radius: 999),
+          ],
         ),
       ),
     );

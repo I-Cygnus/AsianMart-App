@@ -113,11 +113,13 @@ class _StorefrontShellState extends State<StorefrontShell> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ProductDetailPage(
-          product: product,
-          onAddToCart: (quantity) =>
-              _handleAddToCart(product, quantity: quantity),
-          onBuyNow: (quantity) async {
-            await _handleAddToCart(product, quantity: quantity);
+          initialProduct: product,
+          onLoadDetail: () =>
+              widget.controller.loadProductDetail(product.id),
+          onAddToCart: (detailProduct, quantity) =>
+              _handleAddToCart(detailProduct, quantity: quantity),
+          onBuyNow: (detailProduct, quantity) async {
+            await _handleAddToCart(detailProduct, quantity: quantity);
             if (!mounted) {
               return;
             }
@@ -174,26 +176,25 @@ class _StorefrontShellState extends State<StorefrontShell> {
               isLoading: widget.controller.listLoading,
               isLoadingMore: widget.controller.listLoadingMore,
               hasMore: widget.controller.listHasMore,
+              totalCount: widget.controller.listTotalCount,
               errorMessage: widget.controller.listError,
-              categories: widget.controller.categories,
-              selectedCategoryId: widget.controller.listCategoryId,
+              categoryLevels: widget.controller.categoryLevels,
+              categoryPath: widget.controller.categoryPath,
+              loadingChildOf: widget.controller.loadingChildOf,
               searchQuery: widget.controller.listKeyword,
               sortMode: widget.controller.listSort,
               wishlistIds: widget.controller.wishlistedProductIds,
               onRefresh: widget.controller.refreshProductList,
               onSearch: (keyword) => widget.controller.applyProductFilters(
-                categoryId: widget.controller.listCategoryId,
                 keyword: keyword,
                 sort: widget.controller.listSort,
               ),
-              onSelectCategory: (categoryId) =>
-                  widget.controller.applyProductFilters(
+              onSelectCategoryAtDepth: (depth, categoryId) =>
+                  widget.controller.selectCategoryAtDepth(
+                depth: depth,
                 categoryId: categoryId,
-                keyword: widget.controller.listKeyword,
-                sort: widget.controller.listSort,
               ),
               onSortChanged: (mode) => widget.controller.applyProductFilters(
-                categoryId: widget.controller.listCategoryId,
                 keyword: widget.controller.listKeyword,
                 sort: mode,
               ),
@@ -253,8 +254,11 @@ class _StorefrontShellState extends State<StorefrontShell> {
             WishlistTab(
               isAuthenticated: widget.controller.isAuthenticated,
               isLoading: widget.controller.wishlistLoading,
+              isLoadingMore: widget.controller.wishlistLoadingMore,
+              hasMore: widget.controller.wishlisthasMore,
               errorMessage: widget.controller.wishlistError,
               items: widget.controller.wishlistItems,
+              totalCount: widget.controller.wishlistTotalCount,
               onRequireLogin: _openAuthPage,
               onRefresh: widget.controller.loadWishlist,
               onRemove: (productId) => _handleWishlistToggle(productId),
@@ -266,14 +270,21 @@ class _StorefrontShellState extends State<StorefrontShell> {
                 }
                 await _handleAddToCart(product);
               },
-              onOpenProduct: (productId) {
-                final product = widget.controller.findProduct(productId);
-                if (product == null) {
-                  _showSnack('상품 정보를 찾을 수 없습니다.');
+              onOpenProduct: (productId) async {
+                final cached = widget.controller.findProduct(productId);
+                if (cached != null) {
+                  _showProduct(cached);
                   return;
                 }
-                _showProduct(product);
+                try {
+                  final detail = await widget.controller.loadProductDetail(productId);
+                  if (!mounted) return;
+                  _showProduct(detail);
+                } catch (_) {
+                  _showSnack('상품 정보를 찾을 수 없습니다.');
+                }
               },
+              onLoadMore: widget.controller.loadMoreWishlists,
             ),
             ProfileTab(
               isAuthenticated: widget.controller.isAuthenticated,

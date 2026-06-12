@@ -9,7 +9,8 @@ import 'package:asian_mart_app/presentation/widgets/quantity_stepper.dart';
 class ProductDetailPage extends StatefulWidget {
   const ProductDetailPage({
     super.key,
-    required this.product,
+    required this.initialProduct,
+    required this.onLoadDetail,
     required this.onAddToCart,
     required this.onBuyNow,
     required this.onToggleWishlist,
@@ -18,9 +19,10 @@ class ProductDetailPage extends StatefulWidget {
     required this.isAuthenticated,
   });
 
-  final Product product;
-  final ValueChanged<int> onAddToCart;
-  final Future<void> Function(int quantity) onBuyNow;
+  final Product initialProduct;
+  final Future<Product> Function() onLoadDetail;
+  final void Function(Product product, int quantity) onAddToCart;
+  final Future<void> Function(Product product, int quantity) onBuyNow;
   final Future<void> Function() onToggleWishlist;
   final bool isWishlisted;
   final Future<void> Function() onRequireLogin;
@@ -32,10 +34,41 @@ class ProductDetailPage extends StatefulWidget {
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
   int _quantity = 1;
+  late Product _product;
+  bool _detailLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _product = widget.initialProduct;
+    _loadDetail();
+  }
+
+  Future<void> _loadDetail() async {
+    setState(() => _detailLoading = true);
+    try {
+      final detail = await widget.onLoadDetail();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _product = detail;
+        _detailLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _detailLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('상품 정보를 불러오지 못했습니다.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final product = widget.product;
+    final product = _product;
     final l10n = AppLocalizations.of(context);
     final total = product.sellingPrice * _quantity;
 
@@ -73,12 +106,19 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               SizedBox(
                 height: 320,
                 width: double.infinity,
-                child: ProductImage(
-                  imageUrl: product.thumbnailUrl,
-                  label: product.name,
-                  borderRadius: 0,
-                  fontSize: 110,
-                ),
+                child: product.thumbnailUrl != null
+                    ? ProductImage(
+                        imageUrl: product.thumbnailUrl,
+                        label: product.name,
+                        borderRadius: 0,
+                        fontSize: 110,
+                      )
+                    : ColoredBox(
+                        color: AppTheme.imagePlaceholder,
+                        child: _detailLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : const SizedBox.expand(),
+                      ),
               ),
               // Bottom gradient fade
               Positioned(
@@ -226,6 +266,41 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     height: 1.65,
                   ),
                 ),
+                // description Text 아래
+                if (product.imageUrls != null && product.imageUrls!.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  ...product.imageUrls!.map((url) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                      child: Image.network(
+                        url,
+                        width: double.infinity,
+                        fit: BoxFit.fitWidth, // 가로 맞춤, 세로는 원본 비율
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return const SizedBox(
+                            height: 160,
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        },
+                        errorBuilder: (_, __, ___) => Container(
+                          height: 120,
+                          color: AppTheme.imagePlaceholder,
+                          alignment: Alignment.center,
+                          child: Text(
+                            product.name.substring(0, 1),
+                            style: const TextStyle(
+                              fontSize: 48,
+                              fontWeight: FontWeight.w900,
+                              color: AppTheme.textTertiary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )),
+                ],
               ],
             ),
           ),
@@ -300,7 +375,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 child: OutlinedButton(
                   onPressed: product.isOrderable
                       ? () {
-                          widget.onAddToCart(_quantity);
+                          widget.onAddToCart(product, _quantity);
                           Navigator.of(context).pop();
                         }
                       : null,
@@ -318,7 +393,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               Expanded(
                 child: FilledButton(
                   onPressed: product.isOrderable
-                      ? () => widget.onBuyNow(_quantity)
+                      ? () => widget.onBuyNow(product, _quantity)
                       : null,
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(52),
