@@ -178,25 +178,23 @@ class _StorefrontShellState extends State<StorefrontShell> {
               hasMore: widget.controller.listHasMore,
               totalCount: widget.controller.listTotalCount,
               errorMessage: widget.controller.listError,
-              categories: widget.controller.categories,
-              selectedCategoryId: widget.controller.listCategoryId,
+              categoryLevels: widget.controller.categoryLevels,
+              categoryPath: widget.controller.categoryPath,
+              loadingChildOf: widget.controller.loadingChildOf,
               searchQuery: widget.controller.listKeyword,
               sortMode: widget.controller.listSort,
               wishlistIds: widget.controller.wishlistedProductIds,
               onRefresh: widget.controller.refreshProductList,
               onSearch: (keyword) => widget.controller.applyProductFilters(
-                categoryId: widget.controller.listCategoryId,
                 keyword: keyword,
                 sort: widget.controller.listSort,
               ),
-              onSelectCategory: (categoryId) =>
-                  widget.controller.applyProductFilters(
+              onSelectCategoryAtDepth: (depth, categoryId) =>
+                  widget.controller.selectCategoryAtDepth(
+                depth: depth,
                 categoryId: categoryId,
-                keyword: widget.controller.listKeyword,
-                sort: widget.controller.listSort,
               ),
               onSortChanged: (mode) => widget.controller.applyProductFilters(
-                categoryId: widget.controller.listCategoryId,
                 keyword: widget.controller.listKeyword,
                 sort: mode,
               ),

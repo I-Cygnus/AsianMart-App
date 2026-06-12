@@ -24,14 +24,15 @@ class ProductListPage extends StatefulWidget {
     required this.hasMore,
     required this.totalCount,
     required this.errorMessage,
-    required this.categories,
-    required this.selectedCategoryId,
+    required this.categoryLevels,
+    required this.categoryPath,
+    required this.loadingChildOf,
     required this.searchQuery,
     required this.sortMode,
     required this.wishlistIds,
     required this.onRefresh,
     required this.onSearch,
-    required this.onSelectCategory,
+    required this.onSelectCategoryAtDepth,
     required this.onSortChanged,
     required this.onLoadMore,
     required this.onProductTap,
@@ -45,14 +46,16 @@ class ProductListPage extends StatefulWidget {
   final bool hasMore;
   final int totalCount;
   final String? errorMessage;
-  final List<ProductCategory> categories;
-  final int? selectedCategoryId;
+  final List<List<ProductCategory>> categoryLevels;
+  final List<int> categoryPath;
+  final int? loadingChildOf;
   final String searchQuery;
   final SortMode sortMode;
   final Set<int> wishlistIds;
   final Future<void> Function() onRefresh;
   final ValueChanged<String> onSearch;
-  final ValueChanged<int?> onSelectCategory;
+  final Future<void> Function(int depth, int? categoryId)
+      onSelectCategoryAtDepth;
   final ValueChanged<SortMode> onSortChanged;
   final Future<void> Function() onLoadMore;
   final ValueChanged<Product> onProductTap;
@@ -110,12 +113,19 @@ class _ProductListPageState extends State<ProductListPage> {
     });
   }
 
-  void _selectCategory(ProductCategory cat) {
-    if (cat.id == widget.selectedCategoryId) {
+  void _selectCategoryAtDepth(int depth, ProductCategory cat) {
+    final selectedAtDepth =
+        depth < widget.categoryPath.length ? widget.categoryPath[depth] : null;
+
+    final isReselectingIntermediate =
+        cat.id == selectedAtDepth &&
+        widget.categoryPath.length > depth + 1;
+
+    if (cat.id == selectedAtDepth && !isReselectingIntermediate) {
       return;
     }
     _debounce?.cancel();
-    widget.onSelectCategory(cat.id);
+    widget.onSelectCategoryAtDepth(depth, cat.id);
   }
 
   void _showSortSheet(AppLocalizations l10n) {
@@ -216,11 +226,8 @@ class _ProductListPageState extends State<ProductListPage> {
     }
 
     final products = widget.products;
-    final displayCategories = [
-        ProductCategory(id: null, name: '전체'),
-        ...widget.categories
-    ];
     final hasMore = widget.hasMore;
+    final categoryLevels = widget.categoryLevels;
 
     return RefreshIndicator(
       onRefresh: widget.onRefresh,
@@ -234,14 +241,22 @@ class _ProductListPageState extends State<ProductListPage> {
               onChanged: _onSearchChanged,
             ),
           ),
-          if (displayCategories.length > 1)
-            SliverToBoxAdapter(
-              child: _CategoryFilterBar(
-                categories: displayCategories,
-                selected: widget.selectedCategoryId,
-                allSelected: widget.selectedCategoryId == null,
-                onSelect: _selectCategory,
+          if (categoryLevels.isNotEmpty && categoryLevels.first.length > 1)
+            for (var depth = 0; depth < categoryLevels.length; depth++)
+              SliverToBoxAdapter(
+                child: _CategoryFilterBar(
+                  categories: categoryLevels[depth],
+                  selected: depth < widget.categoryPath.length
+                      ? widget.categoryPath[depth]
+                      : null,
+                  allSelected: depth == 0 && widget.categoryPath.isEmpty,
+                  compact: depth > 0,
+                  onSelect: (cat) => _selectCategoryAtDepth(depth, cat),
+                ),
               ),
+          if (widget.loadingChildOf != null)
+            const SliverToBoxAdapter(
+              child: _SubCategoryLoadingBar(),
             ),
           SliverToBoxAdapter(
             child: _ResultBar(
@@ -377,18 +392,28 @@ class _CategoryFilterBar extends StatelessWidget {
     required this.selected,
     required this.allSelected,
     required this.onSelect,
+    this.compact = false,
   });
 
   final List<ProductCategory> categories;
   final int? selected;
   final bool allSelected;
   final ValueChanged<ProductCategory> onSelect;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    final chipPadding = compact
+        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 7)
+        : const EdgeInsets.symmetric(horizontal: 14, vertical: 9);
+    final fontSize = compact ? 12.0 : 13.0;
+
     return Container(
       color: AppTheme.background,
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: EdgeInsets.only(
+        bottom: compact ? 2 : 4,
+        left: compact ? 8 : 0,
+      ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -403,8 +428,7 @@ class _CategoryFilterBar extends StatelessWidget {
                 onTap: () => onSelect(cat),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 160),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  padding: chipPadding,
                   decoration: BoxDecoration(
                     color: isActive ? AppTheme.primary : AppTheme.surface,
                     borderRadius: BorderRadius.circular(AppTheme.radiusFull),
@@ -419,7 +443,7 @@ class _CategoryFilterBar extends StatelessWidget {
                       Text(
                         cat.name,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: fontSize,
                           fontWeight:
                               isActive ? FontWeight.w700 : FontWeight.w500,
                           color:
@@ -432,6 +456,30 @@ class _CategoryFilterBar extends StatelessWidget {
               ),
             );
           }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _SubCategoryLoadingBar extends StatelessWidget {
+  const _SubCategoryLoadingBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppTheme.background,
+      padding: const EdgeInsets.fromLTRB(24, 0, 16, 4),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: const [
+            _SkeletonBox(width: 56, height: 30, radius: 999),
+            SizedBox(width: 8),
+            _SkeletonBox(width: 72, height: 30, radius: 999),
+            SizedBox(width: 8),
+            _SkeletonBox(width: 64, height: 30, radius: 999),
+          ],
         ),
       ),
     );

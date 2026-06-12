@@ -28,6 +28,18 @@ class ApiClient {
     return [];
   }
 
+  Future<List<ProductCategory>> fetchChildCategories(int parentId) async {
+    final response = await _send('GET', '/api/categories/child/$parentId');
+
+    if (response.data is List) {
+      return (response.data as List)
+          .whereType<Map<String, dynamic>>()
+          .map(ProductCategory.fromJson)
+          .toList();
+    }
+    return [];
+  }
+
   Future<Product> fetchProduct({required int productId}) async {
     final response = await _send('GET', '/api/products/$productId');
     return Product.fromJson(_asMap(response.data));

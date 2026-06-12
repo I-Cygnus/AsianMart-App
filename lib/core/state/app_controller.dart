@@ -43,6 +43,10 @@ class AppController extends ChangeNotifier {
 
   // ── '상품' 탭(서버 주도 검색/필터/정렬/페이지네이션) 상태 ──────────────────
   List<ProductCategory> _categories = const [];
+  List<int> _categoryPath = const [];
+  List<List<ProductCategory>> _categoryLevels = const [];
+  final Map<int, List<ProductCategory>> _childCategoryCache = {};
+  int? _loadingChildOf;
   List<Product> _listProducts = const [];
   bool _listLoading = false;
   bool _listLoadingMore = false;
@@ -73,6 +77,9 @@ class AppController extends ChangeNotifier {
 
   List<Product> get products => _products;
   List<ProductCategory> get categories => _categories;
+  List<int> get categoryPath => _categoryPath;
+  List<List<ProductCategory>> get categoryLevels => _categoryLevels;
+  int? get loadingChildOf => _loadingChildOf;
   List<Product> get listProducts => _listProducts;
   bool get listLoading => _listLoading;
   bool get listLoadingMore => _listLoadingMore;
@@ -166,20 +173,107 @@ class AppController extends ChangeNotifier {
   Future<void> loadCategories() async {
     try {
       _categories = await _apiClient.fetchRootCateogires();
+      _rebuildRootLevel();
       notifyListeners();
     } catch (_) {
       // 카테고리 로드 실패는 치명적이지 않으므로 조용히 무시한다.
     }
   }
 
-  /// 검색어/카테고리/정렬을 적용해 '상품' 탭 목록을 첫 페이지부터 다시 불러온다.
-  Future<void> applyProductFilters({
+  List<ProductCategory> _rootLevelCategories() {
+    return [
+      const ProductCategory(id: null, name: '전체'),
+      ..._categories,
+    ];
+  }
+
+  void _rebuildRootLevel() {
+    _categoryLevels = [_rootLevelCategories()];
+  }
+
+  Future<List<ProductCategory>> _loadChildren(int parentId) async {
+    final cached = _childCategoryCache[parentId];
+    if (cached != null) {
+      return cached;
+    }
+    final children = await _apiClient.fetchChildCategories(parentId);
+    _childCategoryCache[parentId] = children;
+    return children;
+  }
+
+  Future<void> _appendChildLevel(int parentId) async {
+    if (_childCategoryCache.containsKey(parentId)) {
+      final cached = _childCategoryCache[parentId]!;
+      if (_categoryPath.isNotEmpty &&
+          _categoryPath.last == parentId &&
+          cached.isNotEmpty) {
+        _categoryLevels = [..._categoryLevels, cached];
+        notifyListeners();
+      }
+      return;
+    }
+
+    _loadingChildOf = parentId;
+    notifyListeners();
+
+    try {
+      final children = await _loadChildren(parentId);
+      if (_categoryPath.isEmpty || _categoryPath.last != parentId) {
+        return;
+      }
+      if (children.isNotEmpty) {
+        _categoryLevels = [..._categoryLevels, children];
+      }
+    } catch (_) {
+      // 하위 카테고리 로드 실패는 치명적이지 않으므로 조용히 무시한다.
+    } finally {
+      if (_loadingChildOf == parentId) {
+        _loadingChildOf = null;
+      }
+      notifyListeners();
+    }
+  }
+
+  /// depth 행에서 카테고리를 선택한다. 하위가 있으면 다음 행을 지연 로드한다.
+  Future<void> selectCategoryAtDepth({
+    required int depth,
     int? categoryId,
+  }) async {
+    if (depth == 0 && categoryId == null) {
+      _categoryPath = [];
+      _listCategoryId = null;
+      _categoryLevels = _categoryLevels.isNotEmpty
+          ? [_categoryLevels.first]
+          : [_rootLevelCategories()];
+      _loadingChildOf = null;
+      notifyListeners();
+      await _fetchProductListPage(reset: true);
+      return;
+    }
+
+    if (categoryId == null) {
+      return;
+    }
+
+    _categoryPath = [..._categoryPath.take(depth), categoryId];
+    _listCategoryId = categoryId;
+    _categoryLevels = _categoryLevels.take(depth + 1).toList();
+    notifyListeners();
+
+    await Future.wait([
+      _fetchProductListPage(reset: true),
+      _appendChildLevel(categoryId),
+    ]);
+  }
+
+  /// 검색어/정렬을 적용해 '상품' 탭 목록을 첫 페이지부터 다시 불러온다.
+  Future<void> applyProductFilters({
     String? keyword,
     SortMode? sort,
   }) async {
-    _listCategoryId = categoryId;
-    _listKeyword = keyword ?? '';
+    if (keyword != null) {
+      _listKeyword = keyword;
+    }
     if (sort != null) {
       _listSort = sort;
     }
