@@ -67,12 +67,9 @@ class ProductListPage extends StatefulWidget {
 }
 
 class _ProductListPageState extends State<ProductListPage> {
-  static const Duration _searchDebounce = Duration(milliseconds: 400);
-
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  Timer? _debounce;
 
   @override
   void initState() {
@@ -83,7 +80,6 @@ class _ProductListPageState extends State<ProductListPage> {
 
   @override
   void dispose() {
-    _debounce?.cancel();
     _scrollController
       ..removeListener(_onScroll)
       ..dispose();
@@ -106,11 +102,8 @@ class _ProductListPageState extends State<ProductListPage> {
     }
   }
 
-  void _onSearchChanged(String value) {
-    _debounce?.cancel();
-    _debounce = Timer(_searchDebounce, () {
-      widget.onSearch(value.trim());
-    });
+  void _onSearchSubmit() {
+    widget.onSearch(_searchController.text.trim());
   }
 
   void _selectCategoryAtDepth(int depth, ProductCategory cat) {
@@ -124,7 +117,6 @@ class _ProductListPageState extends State<ProductListPage> {
     if (cat.id == selectedAtDepth && !isReselectingIntermediate) {
       return;
     }
-    _debounce?.cancel();
     widget.onSelectCategoryAtDepth(depth, cat.id);
   }
 
@@ -238,7 +230,8 @@ class _ProductListPageState extends State<ProductListPage> {
             child: _SearchBar(
               controller: _searchController,
               hintText: l10n.searchProductHint,
-              onChanged: _onSearchChanged,
+              onSubmitted: _onSearchSubmit,
+              onClear: () => widget.onSearch(''),
             ),
           ),
           if (categoryLevels.isNotEmpty && categoryLevels.first.length > 1)
@@ -309,12 +302,14 @@ class _SearchBar extends StatefulWidget {
   const _SearchBar({
     required this.controller,
     required this.hintText,
-    required this.onChanged,
+    required this.onSubmitted,
+    this.onClear,
   });
 
   final TextEditingController controller;
   final String hintText;
-  final ValueChanged<String> onChanged;
+  final VoidCallback onSubmitted;
+  final VoidCallback? onClear;
 
   @override
   State<_SearchBar> createState() => _SearchBarState();
@@ -355,7 +350,7 @@ class _SearchBarState extends State<_SearchBar> {
         ),
         child: TextField(
           controller: widget.controller,
-          onChanged: widget.onChanged,
+          onSubmitted: (_) => widget.onSubmitted,
           textInputAction: TextInputAction.search,
           style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
           decoration: InputDecoration(
@@ -365,15 +360,26 @@ class _SearchBarState extends State<_SearchBar> {
             prefixIcon: const Icon(Icons.search_rounded,
                 size: 20, color: AppTheme.textTertiary),
             suffixIcon: _hasText
-                ? IconButton(
-                    icon: const Icon(Icons.cancel_rounded,
-                        size: 18, color: AppTheme.textTertiary),
-                    onPressed: () {
-                      widget.controller.clear();
-                      widget.onChanged('');
-                    },
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.search_rounded, size: 20),
+                        onPressed: widget.onSubmitted,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.cancel_rounded, size: 18),
+                        onPressed: () {
+                          widget.controller.clear();
+                          widget.onClear?.call(); // 또는 widget.onSubmitted()로 빈 검색 실행
+                        },
+                      ),
+                    ],
                   )
-                : null,
+                : IconButton(
+                    icon: const Icon(Icons.search_rounded, size: 20),
+                    onPressed: widget.onSubmitted,
+                  ),
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 12),
             isDense: true,
