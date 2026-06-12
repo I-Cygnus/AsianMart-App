@@ -22,17 +22,17 @@ class AppController extends ChangeNotifier {
   String? _guestToken;
 
   static const int _listPageSize = 20;
+  static const int _wishlistPageSize = 10;
 
   bool _bootstrapped = false;
   bool _productsLoading = false;
   bool _cartLoading = false;
   bool _authLoading = false;
-  bool _wishlistLoading = false;
+
   bool _profileLoading = false;
 
   String? _productsError;
   String? _cartError;
-  String? _wishlistError;
   String? _profileError;
 
   List<Product> _products = const [];
@@ -53,16 +53,21 @@ class AppController extends ChangeNotifier {
   String _listKeyword = '';
   SortMode _listSort = SortMode.latest;
 
+  bool _wishlistLoading = false;
+  bool _wishlistLoadingMore = false;
+  String? _wishlistError;
+  int _wishlistPage = 0;
+  bool _wishlistHasMore = true;
+  int _wishlistTotalCount = 0;
+
   bool get bootstrapped => _bootstrapped;
   bool get productsLoading => _productsLoading;
   bool get cartLoading => _cartLoading;
   bool get authLoading => _authLoading;
-  bool get wishlistLoading => _wishlistLoading;
   bool get profileLoading => _profileLoading;
 
   String? get productsError => _productsError;
   String? get cartError => _cartError;
-  String? get wishlistError => _wishlistError;
   String? get profileError => _profileError;
 
   List<Product> get products => _products;
@@ -77,6 +82,11 @@ class AppController extends ChangeNotifier {
   SortMode get listSort => _listSort;
   List<CartEntry> get cartItems => _cartItems;
   List<WishlistItem> get wishlistItems => _wishlistItems;
+  bool get wishlistLoading => _wishlistLoading;
+  bool get wishlistLoadingMore => _wishlistLoadingMore;
+  bool get wishlisthasMore => _wishlistHasMore;
+  int get wishlistTotalCount => _wishlistTotalCount;
+  String? get wishlistError => _wishlistError;
   List<Address> get addresses => _addresses;
   AppUser? get currentUser => _currentUser;
   bool get isAuthenticated => _accessToken != null && _accessToken!.isNotEmpty;
@@ -252,29 +262,69 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<void> loadWishlist() async {
-    if (!isAuthenticated) {
-      _wishlistItems = const [];
+  Future<void> _fetchWishlistPage({required bool reset}) async {
+    if (reset) {
+      _wishlistLoading = true;
       _wishlistError = null;
-      notifyListeners();
-      return;
+      _wishlistPage = 0;
+      _wishlistHasMore = true;
+    } else {
+      _wishlistLoadingMore = true;
     }
-
-    _wishlistLoading = true;
-    _wishlistError = null;
     notifyListeners();
+
     try {
-      _wishlistItems = await _apiClient.fetchWishlist(_accessToken!);
+      final result = await _apiClient.fetchWishlists(
+        accessToken: _accessToken,
+        page: _wishlistPage,
+        size: _wishlistPageSize,
+        sort: _listSort.apiSort,
+      );
+      _wishlistItems =
+          reset ? result.items : [..._wishlistItems, ...result.items];
+      if (reset) {
+        _wishlistTotalCount = result.totalElements;
+      }
+      _wishlistHasMore = !result.isLast;
+      if (_wishlistHasMore) {
+        _wishlistPage += 1;
+      }
     } catch (error) {
       if (error is ApiException && error.statusCode == 401) {
         await _clearPersistedToken();
         return;
       }
       _wishlistError = _messageOf(error);
+      if (reset) {
+        _wishlistItems = const [];
+        _wishlistTotalCount = 0;
+      }
     } finally {
       _wishlistLoading = false;
+      _wishlistLoadingMore = false;
       notifyListeners();
     }
+  }
+
+  Future<void> loadWishlist() async {
+    if (!isAuthenticated) {
+      _wishlistItems = const [];
+      _wishlistError = null;
+      _wishlistPage = 0;
+      _wishlistHasMore = true;
+      _wishlistTotalCount = 0;
+      notifyListeners();
+      return;
+    }
+
+    await _fetchWishlistPage(reset: true);
+  }
+
+  Future<void> loadMoreWishlists() async {
+    if (_wishlistLoading || _wishlistLoadingMore || !_wishlistHasMore) {
+      return;
+    }
+    await _fetchWishlistPage(reset: false);
   }
 
   Future<void> loadProfile() async {
@@ -311,6 +361,7 @@ class AppController extends ChangeNotifier {
   Future<void> _clearPersistedToken() async {
     _accessToken = null;
     _wishlistItems = const [];
+    _wishlistTotalCount = 0;
     _addresses = const [];
     _currentUser = null;
     await _storage.delete(key: _tokenKey);
@@ -386,6 +437,7 @@ class AppController extends ChangeNotifier {
     _accessToken = null;
     _guestToken = null;
     _wishlistItems = const [];
+    _wishlistTotalCount = 0;
     _addresses = const [];
     _currentUser = null;
     notifyListeners();

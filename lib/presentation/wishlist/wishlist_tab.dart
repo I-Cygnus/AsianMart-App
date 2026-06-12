@@ -7,15 +7,19 @@ import 'package:asian_mart_app/presentation/widgets/empty_state.dart';
 import 'package:asian_mart_app/presentation/widgets/product_image.dart';
 import 'package:asian_mart_app/presentation/widgets/tab_header.dart';
 
-class WishlistTab extends StatelessWidget {
+class WishlistTab extends StatefulWidget {
   const WishlistTab({
     super.key,
     required this.isAuthenticated,
     required this.isLoading,
+    required this.isLoadingMore,
+    required this.hasMore,
     required this.errorMessage,
     required this.items,
+    required this.totalCount,
     required this.onRequireLogin,
     required this.onRefresh,
+    required this.onLoadMore,
     required this.onRemove,
     required this.onAddToCart,
     required this.onOpenProduct,
@@ -23,29 +27,67 @@ class WishlistTab extends StatelessWidget {
 
   final bool isAuthenticated;
   final bool isLoading;
+  final bool isLoadingMore;
+  final bool hasMore;
   final String? errorMessage;
   final List<WishlistItem> items;
+  final int totalCount;
   final VoidCallback onRequireLogin;
   final Future<void> Function() onRefresh;
+  final Future<void> Function() onLoadMore;
   final ValueChanged<int> onRemove;
   final ValueChanged<int> onAddToCart;
   final ValueChanged<int> onOpenProduct;
+
+  @override
+  State<WishlistTab> createState() => _WishListTabState();
+  
+}
+
+class _WishListTabState extends State<WishlistTab> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients ||
+        widget.isLoadingMore ||
+        !widget.hasMore) {
+      return;
+    }
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 320) {
+      widget.onLoadMore();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
     Widget body;
-    if (!isAuthenticated) {
-      body = _AuthPrompt(onRequireLogin: onRequireLogin);
-    } else if (isLoading && items.isEmpty) {
+    if (!widget.isAuthenticated) {
+      body = _AuthPrompt(onRequireLogin: widget.onRequireLogin);
+    } else if (widget.isLoading && widget.items.isEmpty) {
       body = const Center(child: CircularProgressIndicator());
-    } else if (errorMessage != null && items.isEmpty) {
+    } else if (widget.errorMessage != null && widget.items.isEmpty) {
       body = _ErrorState(
-        message: errorMessage!,
-        onRetry: onRefresh,
+        message: widget.errorMessage!,
+        onRetry: widget.onRefresh,
       );
-    } else if (items.isEmpty) {
+    } else if (widget.items.isEmpty) {
       body = EmptyState(
         icon: Icons.favorite_border_rounded,
         title: l10n.wishlistEmpty,
@@ -53,23 +95,29 @@ class WishlistTab extends StatelessWidget {
       );
     } else {
       body = RefreshIndicator(
-        onRefresh: onRefresh,
-        child: ListView.separated(
+        onRefresh: widget.onRefresh,
+        child: ListView.builder(
+          controller: _scrollController,
           padding: const EdgeInsets.fromLTRB(
             TabLayoutSpacing.horizontal,
             TabLayoutSpacing.contentTop,
             TabLayoutSpacing.horizontal,
             TabLayoutSpacing.contentBottom,
           ),
-          itemCount: items.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemCount: widget.items.length + (widget.hasMore ? 1 : 0),
           itemBuilder: (context, index) {
-            final item = items[index];
-            return _WishlistItemCard(
-              item: item,
-              onTap: () => onOpenProduct(item.productId),
-              onRemove: () => onRemove(item.productId),
-              onAddToCart: () => onAddToCart(item.productId),
+            if (index >= widget.items.length) {
+              return _LoadMoreIndicator(loading: widget.isLoadingMore);
+            }
+            final item = widget.items[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _WishlistItemCard(
+                item: item,
+                onTap: () => widget.onOpenProduct(item.productId),
+                onRemove: () => widget.onRemove(item.productId),
+                onAddToCart: () => widget.onAddToCart(item.productId),
+              ),
             );
           },
         ),
@@ -80,10 +128,34 @@ class WishlistTab extends StatelessWidget {
       children: [
         TabHeader(
           title: l10n.wishlistTitle,
-          badge: items.isNotEmpty ? '${items.length}' : null,
+          badge: widget.totalCount > 0 ? '${widget.totalCount}' : null,
         ),
         Expanded(child: body),
       ],
+    );
+  }
+
+  
+}
+
+class _LoadMoreIndicator extends StatelessWidget {
+  const _LoadMoreIndicator({required this.loading});
+
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Center(
+        child: loading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2.4),
+              )
+            : const SizedBox.shrink(),
+      ),
     );
   }
 }

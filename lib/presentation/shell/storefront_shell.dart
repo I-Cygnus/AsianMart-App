@@ -255,8 +255,11 @@ class _StorefrontShellState extends State<StorefrontShell> {
             WishlistTab(
               isAuthenticated: widget.controller.isAuthenticated,
               isLoading: widget.controller.wishlistLoading,
+              isLoadingMore: widget.controller.wishlistLoadingMore,
+              hasMore: widget.controller.wishlisthasMore,
               errorMessage: widget.controller.wishlistError,
               items: widget.controller.wishlistItems,
+              totalCount: widget.controller.wishlistTotalCount,
               onRequireLogin: _openAuthPage,
               onRefresh: widget.controller.loadWishlist,
               onRemove: (productId) => _handleWishlistToggle(productId),
@@ -282,6 +285,7 @@ class _StorefrontShellState extends State<StorefrontShell> {
                   _showSnack('상품 정보를 찾을 수 없습니다.');
                 }
               },
+              onLoadMore: widget.controller.loadMoreWishlists,
             ),
             ProfileTab(
               isAuthenticated: widget.controller.isAuthenticated,
