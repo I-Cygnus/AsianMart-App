@@ -21,6 +21,9 @@ class AppController extends ChangeNotifier {
   String? _accessToken;
   String? _guestToken;
 
+  String _languageCode = 'KO';
+  String get languageCode => _languageCode;
+
   static const int _listPageSize = 20;
   static const int _wishlistPageSize = 10;
 
@@ -155,12 +158,21 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  Future<void> setLanguageCode(String code) async {
+    if (_languageCode == code) return;
+    _languageCode = code;
+    await Future.wait([
+      loadProducts(),
+      refreshProductList(),
+    ]);
+  }
+
   Future<void> loadProducts() async {
     _productsLoading = true;
     _productsError = null;
     notifyListeners();
     try {
-      final result = await _apiClient.fetchProducts();
+      final result = await _apiClient.fetchProducts(languageCode: languageCode);
       _products = result.items;
     } catch (error) {
       _productsError = _messageOf(error);
@@ -310,6 +322,7 @@ class AppController extends ChangeNotifier {
         page: _listPage,
         size: _listPageSize,
         sort: _listSort.apiSort,
+        languageCode: _languageCode
       );
       _listProducts =
           reset ? result.items : [..._listProducts, ...result.items];
@@ -335,7 +348,9 @@ class AppController extends ChangeNotifier {
 
   Future<Product> loadProductDetail(int productId) async {
     try {
-      return await _apiClient.fetchProduct(productId: productId);
+      return await _apiClient.fetchProduct(
+          productId: productId,
+          languageCode: languageCode);
     } catch (error) {
       throw ApiException(_messageOf(error));
     }
