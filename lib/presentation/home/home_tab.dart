@@ -93,6 +93,7 @@ class HomeTab extends StatefulWidget {
     required this.onProductTap,
     required this.onToggleWishlist,
     required this.onAddToCart,
+    required this.onOpenLanguageSettings,
   });
 
   final List<Product> products;
@@ -110,6 +111,7 @@ class HomeTab extends StatefulWidget {
   final VoidCallback onOpenAuth;
   final VoidCallback onProfileTap;
   final VoidCallback onCartTap;
+  final VoidCallback onOpenLanguageSettings;
   final ValueChanged<Product> onProductTap;
   final ValueChanged<int> onToggleWishlist;
   final ValueChanged<Product> onAddToCart;
@@ -263,6 +265,7 @@ class _HomeTabState extends State<HomeTab> {
             onCartTap: widget.onCartTap,
             onOpenAuth: widget.onOpenAuth,
             onProfileTap: widget.onProfileTap,
+            onOpenLanguageSettings: widget.onOpenLanguageSettings,
           ),
         ),
         Expanded(child: _buildBody(l10n)),
@@ -413,6 +416,7 @@ class _HomeActions extends StatelessWidget {
     required this.onCartTap,
     required this.onOpenAuth,
     required this.onProfileTap,
+    required this.onOpenLanguageSettings,
   });
 
   final int cartCount;
@@ -421,9 +425,11 @@ class _HomeActions extends StatelessWidget {
   final VoidCallback onCartTap;
   final VoidCallback onOpenAuth;
   final VoidCallback onProfileTap;
+  final VoidCallback onOpenLanguageSettings;
 
   @override
   Widget build(BuildContext context) {
+    final languageCode = Localizations.localeOf(context).languageCode.toUpperCase();
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -469,23 +475,18 @@ class _HomeActions extends StatelessWidget {
           )
         else
           Padding(
-            padding: const EdgeInsets.only(right: 6),
+            padding: const EdgeInsets.only(top:4, right: 6),
             child: GestureDetector(
-              onTap: onProfileTap,
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
+              onTap: onOpenLanguageSettings,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Text(
-                  (userName ?? '').isEmpty ? '?' : userName!.substring(0, 1),
+                  languageCode,
                   style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.primary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textSecondary,
                   ),
                 ),
               ),

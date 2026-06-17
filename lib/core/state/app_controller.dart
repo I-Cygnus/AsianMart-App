@@ -164,6 +164,7 @@ class AppController extends ChangeNotifier {
     await Future.wait([
       loadProducts(),
       refreshProductList(),
+      loadWishlist()
     ]);
   }
 
@@ -394,6 +395,7 @@ class AppController extends ChangeNotifier {
         page: _wishlistPage,
         size: _wishlistPageSize,
         sort: _listSort.apiSort,
+        languageCode: languageCode
       );
       _wishlistItems =
           reset ? result.items : [..._wishlistItems, ...result.items];
