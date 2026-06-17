@@ -20,7 +20,6 @@ class ProfileTab extends StatelessWidget {
     required this.onAddAddress,
     required this.onSetDefault,
     required this.onDeleteAddress,
-    required this.onOpenLanguageSettings,
   });
 
   final bool isAuthenticated;
@@ -40,7 +39,6 @@ class ProfileTab extends StatelessWidget {
   }) onAddAddress;
   final ValueChanged<int> onSetDefault;
   final ValueChanged<int> onDeleteAddress;
-  final VoidCallback onOpenLanguageSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -50,17 +48,6 @@ class ProfileTab extends StatelessWidget {
       children: [
         TabHeader(
           title: l10n.profileTitle,
-          action: GestureDetector(
-            onTap: onOpenLanguageSettings,
-            child: const Padding(
-              padding: EdgeInsets.all(4),
-              child: Icon(
-                Icons.settings_outlined,
-                size: 20,
-                color: AppTheme.textTertiary,
-              ),
-            ),
-          ),
         ),
         Expanded(
           child: isAuthenticated

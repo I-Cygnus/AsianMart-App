@@ -104,6 +104,30 @@ class ApiClient {
     );
   }
 
+  Future<List<Product>> fetchRecommendedProducts() async {
+    final response = await _send('GET', '/api/products/recommend');
+    final body = _asMap(response.data);
+    final content = body['products'] as List<dynamic>? ?? const [];
+    final products = content
+        .whereType<Map<String, dynamic>>()
+        .map(Product.fromJson)
+        .toList();
+      
+    return products;
+  }
+
+  Future<List<Product>> fetchPopularProducts() async {
+    final response = await _send('GET', '/api/products/popular');
+    final body = _asMap(response.data);
+    final content = body['products'] as List<dynamic>? ?? const [];
+    final products = content
+        .whereType<Map<String, dynamic>>()
+        .map(Product.fromJson)
+        .toList();
+      
+    return products;
+  }
+
   Future<String> login({
     required String email,
     required String password,

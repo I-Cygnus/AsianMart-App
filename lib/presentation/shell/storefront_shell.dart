@@ -153,8 +153,12 @@ class _StorefrontShellState extends State<StorefrontShell> {
           final pages = <Widget>[
             HomeTab(
               products: _filteredProducts,
+              recommendedProducts: widget.controller.recommendedProducts,
+              popularProducts: widget.controller.popularProducts,
               isLoading: widget.controller.productsLoading,
+              isHomeSectionsLoading: widget.controller.homeSectionsLoading,
               errorMessage: widget.controller.productsError,
+              homeSectionsError: widget.controller.homeSectionsError,
               searchQuery: _searchQuery,
               sortMode: _sortMode,
               currentUserName: widget.controller.currentUser?.name,
@@ -163,7 +167,12 @@ class _StorefrontShellState extends State<StorefrontShell> {
               cartCount: widget.controller.cartItemCount,
               onSearchChanged: (value) => setState(() => _searchQuery = value),
               onSortChanged: (mode) => setState(() => _sortMode = mode),
-              onRefresh: widget.controller.loadProducts,
+              onRefresh: () async {
+                await Future.wait([
+                  widget.controller.loadProducts(),
+                  widget.controller.loadHomeSections(),
+                ]);
+              },
               onOpenAuth: _openAuthPage,
               onProfileTap: () => setState(() => _currentIndex = 4),
               onCartTap: () => setState(() => _currentIndex = 2),
@@ -177,6 +186,18 @@ class _StorefrontShellState extends State<StorefrontShell> {
               onProductTap: _showProduct,
               onToggleWishlist: _handleWishlistToggle,
               onAddToCart: _handleAddToCart,
+              rootCategories: widget.controller.categoryLevels.isNotEmpty
+                  ? widget.controller.categoryLevels.first
+                  : const [],
+              onCategoryTap: (category) async {
+                await widget.controller.selectCategoryAtDepth(
+                  depth: 0,
+                  categoryId: category.id,
+                );
+                if (mounted) {
+                  setState(() => _currentIndex = 1);
+                }
+              },
             ),
             ProductListPage(
               products: widget.controller.listProducts,
@@ -329,13 +350,6 @@ class _StorefrontShellState extends State<StorefrontShell> {
                 if (error != null && mounted) {
                   _showSnack(error);
                 }
-              },
-              onOpenLanguageSettings: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const LanguageSettingsPage(),
-                  ),
-                );
               },
             ),
           ];
