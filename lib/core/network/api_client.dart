@@ -40,8 +40,19 @@ class ApiClient {
     return [];
   }
 
-  Future<Product> fetchProduct({required int productId}) async {
-    final response = await _send('GET', '/api/products/$productId');
+  Future<Product> fetchProduct({
+    required int productId,
+    String? languageCode
+  }) async {
+    final Map<String, String> query = {};
+    if (languageCode != null) {
+      query['languageCode'] = languageCode;
+    }
+    final response = await _send(
+      'GET',
+      '/api/products/$productId',
+      query: query
+    );
     return Product.fromJson(_asMap(response.data));
   }
 
@@ -52,6 +63,7 @@ class ApiClient {
     num? page,
     num? size,
     String? sort,
+    String? languageCode
   }) async {
     final Map<String, String> query = {};
     if (categoryId != null) {
@@ -69,6 +81,10 @@ class ApiClient {
 
     if (sort != null && sort.isNotEmpty) {
       query['sort'] = sort;
+    }
+
+    if (languageCode != null) {
+      query['languageCode'] = languageCode;
     }
 
     final response = await _send('GET', '/api/products', query: query);
@@ -298,6 +314,7 @@ class ApiClient {
     num? page,
     num? size,
     String? sort,
+    String? languageCode
   }) async {
     final Map<String, String> query = {};
 
@@ -306,6 +323,10 @@ class ApiClient {
 
     if (sort != null && sort.isNotEmpty) {
       query['sort'] = sort;
+    }
+
+    if (languageCode != null) {
+      query['languageCode'] = languageCode;
     }
 
     final response = await _send('GET', '/api/wishlist/page', query: query, accessToken: accessToken);

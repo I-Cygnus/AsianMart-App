@@ -11,8 +11,6 @@ class LanguageSettingsPage extends StatelessWidget {
     _LanguageOption(locale: Locale('en'), name: 'English', emoji: '🇺🇸'),
     _LanguageOption(locale: Locale('th'), name: 'ภาษาไทย', emoji: '🇹🇭'),
     _LanguageOption(locale: Locale('vi'), name: 'Tiếng Việt', emoji: '🇻🇳'),
-    _LanguageOption(locale: Locale('zh'), name: '中文', emoji: '🇨🇳'),
-    _LanguageOption(locale: Locale('ja'), name: '日本語', emoji: '🇯🇵'),
   ];
 
   @override

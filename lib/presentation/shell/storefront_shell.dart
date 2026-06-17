@@ -167,6 +167,13 @@ class _StorefrontShellState extends State<StorefrontShell> {
               onOpenAuth: _openAuthPage,
               onProfileTap: () => setState(() => _currentIndex = 4),
               onCartTap: () => setState(() => _currentIndex = 2),
+              onOpenLanguageSettings: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const LanguageSettingsPage(),
+                  ),
+                );
+              },
               onProductTap: _showProduct,
               onToggleWishlist: _handleWishlistToggle,
               onAddToCart: _handleAddToCart,
