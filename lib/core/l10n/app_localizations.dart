@@ -24,6 +24,14 @@ class AppLocalizations {
   static const _strings = <String, Map<String, String>>{
     // ── Navigation ────────────────────────────────────────────────────────────
     'navHome': {
+      'ko': '홈',
+      'en': 'Home',
+      'th': 'หน้าแรก',
+      'vi': 'Trang chủ',
+      'zh': '首页',
+      'ja': 'ホーム',
+    },
+    'navProducts': {
       'ko': '상품',
       'en': 'Products',
       'th': 'สินค้า',
@@ -731,6 +739,22 @@ class AppLocalizations {
       'zh': '确定',
       'ja': '確認',
     },
+    'orderInquiry': {
+      'ko': '주문조회',
+      'en': 'Order history',
+      'th': 'ประวัติคำสั่งซื้อ',
+      'vi': 'Tra cứu đơn hàng',
+      'zh': '订单查询',
+      'ja': '注文履歴',
+    },
+    'comingSoon': {
+      'ko': '준비 중입니다.',
+      'en': 'Coming soon.',
+      'th': 'เร็ว ๆ นี้',
+      'vi': 'Sắp ra mắt.',
+      'zh': '即将推出。',
+      'ja': '準備中です。',
+    },
   };
 
   String _s(String key) =>
@@ -738,6 +762,7 @@ class AppLocalizations {
 
   // Navigation
   String get navHome => _s('navHome');
+  String get navProducts => _s('navProducts');
   String get navCart => _s('navCart');
   String get navWishlist => _s('navWishlist');
   String get navProfile => _s('navProfile');
@@ -831,6 +856,8 @@ class AppLocalizations {
   String get authRequiredTitle => _s('authRequiredTitle');
   String get authRequiredDesc => _s('authRequiredDesc');
   String get profileGuestDesc => _s('profileGuestDesc');
+  String get orderInquiry => _s('orderInquiry');
+  String get comingSoon => _s('comingSoon');
 
   // Parameterized
   String orderStatusLabel(OrderProgress progress) => switch (progress) {

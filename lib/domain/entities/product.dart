@@ -9,7 +9,8 @@ class Product {
     required this.status,
     required this.createdAt,
     required this.updatedAt,
-    this.imageUrl,
+    this.thumbnailUrl,
+    this.imageUrls,
   });
 
   final int id;
@@ -21,7 +22,8 @@ class Product {
   final String status;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final String? imageUrl;
+  final String? thumbnailUrl;
+  final List<String>? imageUrls;
 
   bool get isOrderable => status == 'ON_SALE';
 
@@ -58,7 +60,11 @@ class Product {
           DateTime.fromMillisecondsSinceEpoch(0),
       updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
-      imageUrl: (json['thumbnailUrl'] ?? json['mainImageUrl']) as String?,
+      thumbnailUrl: json['thumbnailUrl'] as String?,
+      imageUrls: (json['imageUrls'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .where((url) => url.isNotEmpty)
+          .toList(),
     );
   }
 }

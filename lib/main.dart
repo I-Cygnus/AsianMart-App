@@ -91,7 +91,10 @@ class _AsiaMartAppState extends State<AsiaMartApp> {
   Locale _locale = const Locale('ko');
   late final AppController _controller;
 
-  void setLocale(Locale locale) => setState(() => _locale = locale);
+  void setLocale(Locale locale) {
+    setState(() => _locale = locale);
+    _controller.setLanguageCode(locale.languageCode.toUpperCase());
+  }
 
   @override
   void initState() {

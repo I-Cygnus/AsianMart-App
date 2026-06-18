@@ -12,6 +12,7 @@ import 'package:asian_mart_app/domain/entities/delivery.dart';
 import 'package:asian_mart_app/domain/entities/order_detail.dart';
 import 'package:asian_mart_app/domain/entities/order_history_item.dart';
 import 'package:asian_mart_app/domain/entities/product.dart';
+import 'package:asian_mart_app/domain/entities/product_category.dart';
 import 'package:asian_mart_app/domain/entities/wishlist_item.dart';
 
 class ApiClient {
@@ -19,31 +20,125 @@ class ApiClient {
 
   final HttpClient _httpClient = HttpClient();
 
-  Future<List<Product>> fetchProducts() async {
-    final products = <Product>[];
-    var page = 0;
+  Future<List<ProductCategory>> fetchRootCateogires() async {
+    final response = await _send('GET', '/api/categories/root');
 
-    while (true) {
-      final response = await _send('GET', '/api/products', query: {
-        'page': '$page',
-        'size': '100',
-      });
-      final body = _asMap(response.data);
-      final content = body['content'] as List<dynamic>? ?? const [];
-      products.addAll(
-        content.whereType<Map<String, dynamic>>().map(Product.fromJson),
-      );
+    if (response.data is List) {
+      return (response.data as List)
+          .whereType<Map<String, dynamic>>()
+          .map(ProductCategory.fromJson)
+          .toList();
+    }
+    return [];
+  }
 
-      final isLastPage = body['last'] as bool? ?? false;
-      final totalPages = (body['totalPages'] as num?)?.toInt();
-      if (content.isEmpty ||
-          isLastPage ||
-          (totalPages != null && page >= totalPages - 1)) {
-        break;
-      }
-      page += 1;
+  Future<List<ProductCategory>> fetchChildCategories(int parentId) async {
+    final response = await _send('GET', '/api/categories/child/$parentId');
+
+    if (response.data is List) {
+      return (response.data as List)
+          .whereType<Map<String, dynamic>>()
+          .map(ProductCategory.fromJson)
+          .toList();
+    }
+    return [];
+  }
+
+  Future<Product> fetchProduct({
+    required int productId,
+    String? languageCode
+  }) async {
+    final Map<String, String> query = {};
+    if (languageCode != null) {
+      query['languageCode'] = languageCode;
+    }
+    final response = await _send(
+      'GET',
+      '/api/products/$productId',
+      query: query
+    );
+    return Product.fromJson(_asMap(response.data));
+  }
+
+  Future<PagedProducts> fetchProducts({
+    num? categoryId,
+    String? keyword,
+    String? searchField,
+    num? page,
+    num? size,
+    String? sort,
+    String? languageCode
+  }) async {
+    final Map<String, String> query = {};
+    if (categoryId != null) {
+      query['categoryId'] = '$categoryId';
+    }
+    if (keyword != null && keyword.isNotEmpty) {
+      query['keyword'] = keyword;
+    }
+    if (searchField != null && searchField.isNotEmpty) {
+      query['searchField'] = searchField;
     }
 
+    query['page'] = page != null ? '$page' : '0';
+    query['size'] = size != null ? '$size' : '4';
+
+    if (sort != null && sort.isNotEmpty) {
+      query['sort'] = sort;
+    }
+
+    if (languageCode != null) {
+      query['languageCode'] = languageCode;
+    }
+
+    final response = await _send('GET', '/api/products', query: query);
+    final body = _asMap(response.data);
+    final content = body['content'] as List<dynamic>? ?? const [];
+    final items = content
+        .whereType<Map<String, dynamic>>()
+        .map(Product.fromJson)
+        .toList();
+
+    return PagedProducts(
+      items: items,
+      page: (body['number'] as num?)?.toInt() ?? (page?.toInt() ?? 0),
+      isLast: body['last'] as bool? ?? true,
+      totalElements: (body['totalElements'] as num?)?.toInt() ?? items.length,
+      totalPages: (body['totalPages'] as num?)?.toInt() ?? 1,
+    );
+  }
+
+  Future<List<Product>> fetchRecommendedProducts({String? languageCode}) async {
+    final Map<String, String> query = {};
+
+    if (languageCode != null) {
+      query['languageCode'] = languageCode;
+    }
+    final response = await _send('GET', '/api/products/recommend', query: query);
+    final body = _asMap(response.data);
+    final content = body['products'] as List<dynamic>? ?? const [];
+    final products = content
+        .whereType<Map<String, dynamic>>()
+        .map(Product.fromJson)
+        .toList();
+      
+    return products;
+  }
+
+  Future<List<Product>> fetchPopularProducts({String? languageCode}) async {
+    final Map<String, String> query = {};
+
+    if (languageCode != null) {
+      query['languageCode'] = languageCode;
+    }
+    final response = await _send('GET', '/api/products/popular', query: query);
+    final body = _asMap(response.data);
+    final content = body['products'] as List<dynamic>? ?? const [];
+    final products = content
+        .whereType<Map<String, dynamic>>()
+        .map(Product.fromJson)
+        .toList();
+      
     return products;
   }
 
@@ -286,18 +381,41 @@ class ApiClient {
     return _cartSnapshotFromResponse(response.data);
   }
 
-  Future<List<WishlistItem>> fetchWishlist(String accessToken) async {
-    final response = await _send(
-      'GET',
-      '/api/wishlist',
-      accessToken: accessToken,
-    );
+  Future<PagedWishlistItems> fetchWishlists({
+    String? accessToken,
+    num? page,
+    num? size,
+    String? sort,
+    String? languageCode
+  }) async {
+    final Map<String, String> query = {};
+
+    query['page'] = page != null ? '$page' : '0';
+    query['size'] = size != null ? '$size' : '4';
+
+    if (sort != null && sort.isNotEmpty) {
+      query['sort'] = sort;
+    }
+
+    if (languageCode != null) {
+      query['languageCode'] = languageCode;
+    }
+
+    final response = await _send('GET', '/api/wishlist/page', query: query, accessToken: accessToken);
     final body = _asMap(response.data);
-    final items = body['items'] as List<dynamic>? ?? const [];
-    return items
+    final content = body['content'] as List<dynamic>? ?? const [];
+    final items = content
         .whereType<Map<String, dynamic>>()
         .map(WishlistItem.fromJson)
         .toList();
+
+    return PagedWishlistItems(
+      items: items,
+      page: (body['number'] as num?)?.toInt() ?? (page?.toInt() ?? 0),
+      isLast: body['last'] as bool? ?? true,
+      totalElements: (body['totalElements'] as num?)?.toInt() ?? items.length,
+      totalPages: (body['totalPages'] as num?)?.toInt() ?? 1,
+    );
   }
 
   Future<void> toggleWishlist({
@@ -544,4 +662,37 @@ class _ApiResponse {
 
   final int statusCode;
   final Object? data;
+}
+
+/// 상품 목록 조회 결과. 페이지네이션 메타데이터를 함께 담는다.
+class PagedProducts {
+  const PagedProducts({
+    required this.items,
+    required this.page,
+    required this.isLast,
+    required this.totalElements,
+    required this.totalPages,
+  });
+
+  final List<Product> items;
+  final int page;
+  final bool isLast;
+  final int totalElements;
+  final int totalPages;
+}
+
+class PagedWishlistItems {
+  const PagedWishlistItems({
+    required this.items,
+    required this.page,
+    required this.isLast,
+    required this.totalElements,
+    required this.totalPages,
+  });
+
+  final List<WishlistItem> items;
+  final int page;
+  final bool isLast;
+  final int totalElements;
+  final int totalPages;
 }
