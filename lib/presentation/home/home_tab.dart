@@ -5,34 +5,29 @@ import 'package:asian_mart_app/core/l10n/app_localizations.dart';
 import 'package:asian_mart_app/core/theme/app_theme.dart';
 import 'package:asian_mart_app/core/utils/formatters.dart';
 import 'package:asian_mart_app/domain/entities/product.dart';
-import 'package:asian_mart_app/domain/enums/sort_mode.dart';
-import 'package:asian_mart_app/presentation/widgets/empty_state.dart';
+import 'package:asian_mart_app/domain/entities/product_category.dart';
 import 'package:asian_mart_app/presentation/widgets/product_image.dart';
 import 'package:asian_mart_app/presentation/widgets/tab_header.dart';
 
-// ── Category definition ───────────────────────────────────────────────────────
-
-class _Category {
-  const _Category({required this.id, required this.label, required this.icon});
-  final int? id;
-  final String label;
-  final String icon;
-}
-
-const _kCategoryAll = _Category(id: null, label: '전체', icon: '🛒');
-
-const _kCategoryLabels = <int, (String, String)>{
-  1: ('쌀/잡곡', '🌾'),
-  2: ('소스/양념', '🫙'),
-  3: ('과자/간식', '🍘'),
-  4: ('음료', '🧃'),
-  5: ('라면/면류', '🍜'),
-  6: ('반찬/김치', '🥬'),
-  7: ('냉동식품', '🧊'),
-  8: ('육류/해산물', '🐟'),
-  9: ('유제품', '🥛'),
-  10: ('건강식품', '🌿'),
+const _kCategoryIcons = <int, String>{
+  1: '🌾',
+  2: '🫙',
+  3: '🍘',
+  4: '🧃',
+  5: '🍜',
+  6: '🥬',
+  7: '🧊',
+  8: '🐟',
+  9: '🥛',
+  10: '🌿',
 };
+
+String _categoryIcon(ProductCategory category) {
+  if (category.id == null) {
+    return '🛒';
+  }
+  return _kCategoryIcons[category.id] ?? '📦';
+}
 
 // ── Banner data ───────────────────────────────────────────────────────────────
 
@@ -75,17 +70,15 @@ const _kBanners = [
 class HomeTab extends StatefulWidget {
   const HomeTab({
     super.key,
-    required this.products,
-    required this.isLoading,
-    required this.errorMessage,
-    required this.searchQuery,
-    required this.sortMode,
+    required this.recommendedProducts,
+    required this.popularProducts,
+    required this.isHomeSectionsLoading,
+    required this.homeSectionsError,
     required this.currentUserName,
     required this.isAuthenticated,
     required this.wishlistIds,
     required this.cartCount,
-    required this.onSearchChanged,
-    required this.onSortChanged,
+    required this.onSearch,
     required this.onRefresh,
     required this.onOpenAuth,
     required this.onProfileTap,
@@ -94,19 +87,19 @@ class HomeTab extends StatefulWidget {
     required this.onToggleWishlist,
     required this.onAddToCart,
     required this.onOpenLanguageSettings,
+    required this.rootCategories,
+    required this.onCategoryTap,
   });
 
-  final List<Product> products;
-  final bool isLoading;
-  final String? errorMessage;
-  final String searchQuery;
-  final SortMode sortMode;
+  final List<Product> recommendedProducts;
+  final List<Product> popularProducts;
+  final bool isHomeSectionsLoading;
+  final String? homeSectionsError;
   final String? currentUserName;
   final bool isAuthenticated;
   final Set<int> wishlistIds;
   final int cartCount;
-  final ValueChanged<String> onSearchChanged;
-  final ValueChanged<SortMode> onSortChanged;
+  final ValueChanged<String> onSearch;
   final Future<void> Function() onRefresh;
   final VoidCallback onOpenAuth;
   final VoidCallback onProfileTap;
@@ -115,6 +108,8 @@ class HomeTab extends StatefulWidget {
   final ValueChanged<Product> onProductTap;
   final ValueChanged<int> onToggleWishlist;
   final ValueChanged<Product> onAddToCart;
+  final List<ProductCategory> rootCategories;
+  final ValueChanged<ProductCategory> onCategoryTap;
 
   @override
   State<HomeTab> createState() => _HomeTabState();
@@ -122,46 +117,15 @@ class HomeTab extends StatefulWidget {
 
 class _HomeTabState extends State<HomeTab> {
   late final TextEditingController _searchController;
-  int? _selectedCategoryId;
-  bool _categoryAllSelected = true;
-
-  List<_Category> get _categories {
-    final ids = widget.products.map((p) => p.categoryId).toSet().toList()
-      ..sort();
-    return [
-      _kCategoryAll,
-      ...ids.map((id) {
-        final entry = _kCategoryLabels[id];
-        return _Category(
-          id: id,
-          label: entry?.$1 ?? '카테고리 $id',
-          icon: entry?.$2 ?? '📦',
-        );
-      }),
-    ];
-  }
-
-  List<Product> get _filtered {
-    var list = widget.products;
-    if (!_categoryAllSelected && _selectedCategoryId != null) {
-      list = list.where((p) => p.categoryId == _selectedCategoryId).toList();
-    }
-    return list;
-  }
 
   @override
   void initState() {
     super.initState();
-    _searchController = TextEditingController(text: widget.searchQuery);
+    _searchController = TextEditingController();
   }
 
-  @override
-  void didUpdateWidget(HomeTab old) {
-    super.didUpdateWidget(old);
-    if (old.searchQuery != widget.searchQuery &&
-        _searchController.text != widget.searchQuery) {
-      _searchController.text = widget.searchQuery;
-    }
+  void _onSearchSubmit() {
+    widget.onSearch(_searchController.text.trim());
   }
 
   @override
@@ -170,86 +134,7 @@ class _HomeTabState extends State<HomeTab> {
     super.dispose();
   }
 
-  void _selectCategory(_Category cat) {
-    setState(() {
-      _categoryAllSelected = cat.id == null;
-      _selectedCategoryId = cat.id;
-    });
-  }
-
-  void _showSortSheet(AppLocalizations l10n) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppTheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXl)),
-      ),
-      builder: (_) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppTheme.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '정렬 기준',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.textPrimary,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                ),
-              ),
-              ...SortMode.values.map((mode) {
-                final isActive = widget.sortMode == mode;
-                return ListTile(
-                  dense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
-                  title: Text(
-                    l10n.sortModeLabel(mode),
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight:
-                          isActive ? FontWeight.w700 : FontWeight.w400,
-                      color:
-                          isActive ? AppTheme.primary : AppTheme.textPrimary,
-                    ),
-                  ),
-                  trailing: isActive
-                      ? const Icon(
-                          Icons.check_rounded,
-                          color: AppTheme.primary,
-                          size: 20,
-                        )
-                      : null,
-                  onTap: () {
-                    widget.onSortChanged(mode);
-                    Navigator.pop(context);
-                  },
-                );
-              }),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -274,100 +159,60 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Widget _buildBody(AppLocalizations l10n) {
-    if (widget.isLoading && widget.products.isEmpty) {
+    if (widget.isHomeSectionsLoading &&
+        widget.recommendedProducts.isEmpty &&
+        widget.popularProducts.isEmpty) {
       return const _GridLoadingSkeleton();
     }
-    if (widget.errorMessage != null && widget.products.isEmpty) {
+    if (widget.homeSectionsError != null &&
+        widget.recommendedProducts.isEmpty &&
+        widget.popularProducts.isEmpty) {
       return _ErrorPanel(
-        message: widget.errorMessage!,
+        message: widget.homeSectionsError!,
         onRetry: widget.onRefresh,
       );
     }
-    if (widget.products.isEmpty) {
-      return EmptyState(
-        icon: Icons.inventory_2_outlined,
-        title: '등록된 상품이 없어요',
-        description: l10n.pullToRefresh,
-      );
-    }
-
-    final shown = _filtered;
 
     return RefreshIndicator(
       onRefresh: widget.onRefresh,
       child: CustomScrollView(
         slivers: [
-          // Search bar (scrolls with content)
           SliverToBoxAdapter(
             child: _HomeSearchBar(
               controller: _searchController,
               hintText: l10n.searchProductHint,
-              onChanged: widget.onSearchChanged,
+              onSubmitted: _onSearchSubmit,
             ),
           ),
-
-          // Banner carousel
-          if (widget.searchQuery.isEmpty)
-            const SliverToBoxAdapter(child: _BannerCarousel()),
-
-          // Category circles
-          if (widget.searchQuery.isEmpty && _categories.length > 1)
+          const SliverToBoxAdapter(child: _BannerCarousel()),
+          if (widget.rootCategories.length > 1)
             SliverToBoxAdapter(
               child: _QuickCategories(
-                categories: _categories,
-                selected: _selectedCategoryId,
-                allSelected: _categoryAllSelected,
-                onSelect: _selectCategory,
+                categories: widget.rootCategories,
+                onSelect: widget.onCategoryTap,
               ),
             ),
-
-          // Sort + count bar
+          if (widget.recommendedProducts.isNotEmpty)
+            SliverToBoxAdapter(
+              child: _RecommendSection(
+                products: widget.recommendedProducts,
+                wishlistIds: widget.wishlistIds,
+                onProductTap: widget.onProductTap,
+                onToggleWishlist: widget.onToggleWishlist,
+                onAddToCart: widget.onAddToCart,
+              ),
+            ),
+          if (widget.recommendedProducts.isNotEmpty)
+            const SliverToBoxAdapter(child: SizedBox(height: 8)),
           SliverToBoxAdapter(
-            child: _SortBar(
-              productCount: shown.length,
-              sortMode: widget.sortMode,
-              onSortTap: () => _showSortSheet(l10n),
-              l10n: l10n,
+            child: _PopularSection(
+              products: widget.popularProducts,
+              wishlistIds: widget.wishlistIds,
+              onProductTap: widget.onProductTap,
+              onToggleWishlist: widget.onToggleWishlist,
+              onAddToCart: widget.onAddToCart,
             ),
           ),
-
-          // Grid
-          if (shown.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: EmptyState(
-                icon: Icons.search_off_rounded,
-                title: '검색 결과가 없어요',
-                description: '다른 카테고리나 검색어를 사용해 보세요',
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 40),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.56,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final product = shown[index];
-                    return RepaintBoundary(
-                      child: _GridProductCard(
-                        product: product,
-                        isWishlisted: widget.wishlistIds.contains(product.id),
-                        onTap: () => widget.onProductTap(product),
-                        onWishlist: () => widget.onToggleWishlist(product.id),
-                        onAddToCart: () => widget.onAddToCart(product),
-                      ),
-                    );
-                  },
-                  childCount: shown.length,
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -501,12 +346,12 @@ class _HomeSearchBar extends StatefulWidget {
   const _HomeSearchBar({
     required this.controller,
     required this.hintText,
-    required this.onChanged,
+    required this.onSubmitted,
   });
 
   final TextEditingController controller;
   final String hintText;
-  final ValueChanged<String> onChanged;
+  final VoidCallback onSubmitted;
 
   @override
   State<_HomeSearchBar> createState() => _HomeSearchBarState();
@@ -547,21 +392,31 @@ class _HomeSearchBarState extends State<_HomeSearchBar> {
         ),
         child: TextField(
           controller: widget.controller,
-          onChanged: widget.onChanged,
+          onSubmitted: (_) => widget.onSubmitted(),
+          textInputAction: TextInputAction.search,
           style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
           decoration: InputDecoration(
             hintText: widget.hintText,
             hintStyle: const TextStyle(fontSize: 14, color: AppTheme.textTertiary),
             prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppTheme.textTertiary),
             suffixIcon: _hasText
-                ? IconButton(
-                    icon: const Icon(Icons.cancel_rounded, size: 18, color: AppTheme.textTertiary),
-                    onPressed: () {
-                      widget.controller.clear();
-                      widget.onChanged('');
-                    },
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.search_rounded, size: 20),
+                        onPressed: widget.onSubmitted,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.cancel_rounded, size: 18),
+                        onPressed: () => widget.controller.clear(),
+                      ),
+                    ],
                   )
-                : null,
+                : IconButton(
+                    icon: const Icon(Icons.search_rounded, size: 20),
+                    onPressed: widget.onSubmitted,
+                  ),
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 12),
             isDense: true,
@@ -737,15 +592,11 @@ class _BannerCard extends StatelessWidget {
 class _QuickCategories extends StatelessWidget {
   const _QuickCategories({
     required this.categories,
-    required this.selected,
-    required this.allSelected,
     required this.onSelect,
   });
 
-  final List<_Category> categories;
-  final int? selected;
-  final bool allSelected;
-  final ValueChanged<_Category> onSelect;
+  final List<ProductCategory> categories;
+  final ValueChanged<ProductCategory> onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -757,9 +608,6 @@ class _QuickCategories extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: categories.map((cat) {
-            final isActive = cat.id == null
-                ? allSelected
-                : (!allSelected && selected == cat.id);
             return GestureDetector(
               onTap: () => onSelect(cat),
               child: Padding(
@@ -767,39 +615,28 @@ class _QuickCategories extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
+                    Container(
                       width: 54,
                       height: 54,
                       decoration: BoxDecoration(
-                        color: isActive
-                            ? AppTheme.primary.withValues(alpha: 0.1)
-                            : AppTheme.background,
+                        color: AppTheme.background,
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color:
-                              isActive ? AppTheme.primary : AppTheme.border,
-                          width: isActive ? 2 : 1,
-                        ),
+                        border: Border.all(color: AppTheme.border),
                       ),
                       child: Center(
                         child: Text(
-                          cat.icon,
+                          _categoryIcon(cat),
                           style: const TextStyle(fontSize: 22),
                         ),
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      cat.label,
-                      style: TextStyle(
+                      cat.name,
+                      style: const TextStyle(
                         fontSize: 11,
-                        fontWeight: isActive
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color: isActive
-                            ? AppTheme.primary
-                            : AppTheme.textSecondary,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.textSecondary,
                       ),
                     ),
                   ],
@@ -813,65 +650,324 @@ class _QuickCategories extends StatelessWidget {
   }
 }
 
-// ── Sort Bar ──────────────────────────────────────────────────────────────────
+// ── Section Header ────────────────────────────────────────────────────────────
 
-class _SortBar extends StatelessWidget {
-  const _SortBar({
-    required this.productCount,
-    required this.sortMode,
-    required this.onSortTap,
-    required this.l10n,
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    this.trailing,
   });
 
-  final int productCount;
-  final SortMode sortMode;
-  final VoidCallback onSortTap;
-  final AppLocalizations l10n;
+  final String title;
+  final String? trailing;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onSortTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-        color: Colors.transparent,
-        child: Row(
-          children: [
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.textPrimary,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const Spacer(),
+          if (trailing != null)
             Text(
-              '상품 $productCount개',
+              trailing!,
               style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppTheme.textSecondary,
               ),
             ),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: AppTheme.surface,
-                borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                border: Border.all(color: AppTheme.border),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Recommend Section ─────────────────────────────────────────────────────────
+
+class _RecommendSection extends StatelessWidget {
+  const _RecommendSection({
+    required this.products,
+    required this.wishlistIds,
+    required this.onProductTap,
+    required this.onToggleWishlist,
+    required this.onAddToCart,
+  });
+
+  final List<Product> products;
+  final Set<int> wishlistIds;
+  final ValueChanged<Product> onProductTap;
+  final ValueChanged<int> onToggleWishlist;
+  final ValueChanged<Product> onAddToCart;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AppTheme.sectionRecommend,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionHeader(title: '추천 상품'),
+          SizedBox(
+            height: 235,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              itemCount: products.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                final product = products[index];
+                return _HorizontalProductCard(
+                  product: product,
+                  isWishlisted: wishlistIds.contains(product.id),
+                  onTap: () => onProductTap(product),
+                  onWishlist: () => onToggleWishlist(product.id),
+                  onAddToCart: () => onAddToCart(product),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Popular Section ─────────────────────────────────────────────────────────────
+
+class _PopularSection extends StatelessWidget {
+  const _PopularSection({
+    required this.products,
+    required this.wishlistIds,
+    required this.onProductTap,
+    required this.onToggleWishlist,
+    required this.onAddToCart,
+  });
+
+  final List<Product> products;
+  final Set<int> wishlistIds;
+  final ValueChanged<Product> onProductTap;
+  final ValueChanged<int> onToggleWishlist;
+  final ValueChanged<Product> onAddToCart;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AppTheme.sectionPopular,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionHeader(
+            title: '인기 상품',
+            trailing: products.isNotEmpty ? '${products.length}개' : null,
+          ),
+          if (products.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 40),
+              child: Text(
+                '등록된 인기 상품이 없어요',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.textSecondary,
+                ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    l10n.sortModeLabel(sortMode),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary,
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 40),
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.64,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                ),
+                itemCount: products.length,
+                itemBuilder: (context, index) {
+                  final product = products[index];
+                  return RepaintBoundary(
+                    child: _GridProductCard(
+                      product: product,
+                      isWishlisted: wishlistIds.contains(product.id),
+                      onTap: () => onProductTap(product),
+                      onWishlist: () => onToggleWishlist(product.id),
+                      onAddToCart: () => onAddToCart(product),
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Horizontal Product Card ───────────────────────────────────────────────────
+
+class _HorizontalProductCard extends StatelessWidget {
+  const _HorizontalProductCard({
+    required this.product,
+    required this.isWishlisted,
+    required this.onTap,
+    required this.onWishlist,
+    required this.onAddToCart,
+  });
+
+  final Product product;
+  final bool isWishlisted;
+  final VoidCallback onTap;
+  final VoidCallback onWishlist;
+  final VoidCallback onAddToCart;
+
+  @override
+  Widget build(BuildContext context) {
+    final unavailable = !product.isOrderable;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 148,
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0C000000),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.hardEdge,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                SizedBox(
+                  width: 148,
+                  height: 148,
+                  child: ProductImage(
+                    imageUrl: product.thumbnailUrl,
+                    label: product.name,
+                    unavailable: unavailable,
+                    borderRadius: 0,
+                  ),
+                ),
+                if (product.discountPercent > 0 && !unavailable)
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: const BoxDecoration(
+                        color: AppTheme.primary,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(AppTheme.radiusLg),
+                          bottomRight: Radius.circular(AppTheme.radiusSm),
+                        ),
+                      ),
+                      child: Text(
+                        '${product.discountPercent}%',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 2),
-                  const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 16,
-                    color: AppTheme.textSecondary,
+                if (unavailable)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      alignment: Alignment.center,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          borderRadius:
+                              BorderRadius.circular(AppTheme.radiusSm),
+                        ),
+                        child: const Text(
+                          '일시품절',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ],
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: _HeartButton(
+                    isWishlisted: isWishlisted,
+                    onTap: onWishlist,
+                  ),
+                ),
+              ],
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Flexible(
+                      child:
+                      Text(
+                        product.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                          height: 1.25,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            formatPrice(product.sellingPrice),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                              color: AppTheme.textPrimary,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ),
+                        if (!unavailable) _AddButton(onPressed: onAddToCart),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -999,7 +1095,7 @@ class _GridProductCard extends StatelessWidget {
             // Info
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 9, 10, 10),
+                padding: const EdgeInsets.fromLTRB(10, 9, 10, 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1014,7 +1110,7 @@ class _GridProductCard extends StatelessWidget {
                         height: 1.35,
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 6),
                     if (product.discountPercent > 0)
                       Text(
                         formatPrice(product.listPrice),
@@ -1112,8 +1208,8 @@ class _AddButton extends StatelessWidget {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        width: 32,
-        height: 32,
+        width: 28,
+        height: 28,
         decoration: BoxDecoration(
           color: AppTheme.primary,
           borderRadius: BorderRadius.circular(AppTheme.radiusSm),
@@ -1136,7 +1232,7 @@ class _GridLoadingSkeleton extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.56,
+        childAspectRatio: 0.64,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
       ),
