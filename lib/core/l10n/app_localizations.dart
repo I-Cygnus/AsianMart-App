@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:asian_mart_app/domain/enums/order_progress.dart';
 import 'package:asian_mart_app/domain/enums/sort_mode.dart';
 
 class AppLocalizations {
@@ -510,6 +511,226 @@ class AppLocalizations {
       'zh': '登录后可使用收藏、地址和结算功能。',
       'ja': 'ログインするとお気に入り、住所、注文機能が使えます。',
     },
+
+    // ── Orders (history) ───────────────────────────────────────────────────────
+    'orderHistory': {
+      'ko': '주문 내역',
+      'en': 'Order history',
+      'th': 'ประวัติคำสั่งซื้อ',
+      'vi': 'Lịch sử đơn hàng',
+      'zh': '订单记录',
+      'ja': '注文履歴',
+    },
+    'orderHistoryMenuDesc': {
+      'ko': '주문하신 내역을 확인하세요',
+      'en': 'View your past orders',
+      'th': 'ดูคำสั่งซื้อที่ผ่านมา',
+      'vi': 'Xem các đơn hàng đã đặt',
+      'zh': '查看您的订单',
+      'ja': 'これまでの注文を確認',
+    },
+    'orderHistoryEmpty': {
+      'ko': '주문 내역이 없어요',
+      'en': 'No orders yet',
+      'th': 'ยังไม่มีคำสั่งซื้อ',
+      'vi': 'Chưa có đơn hàng',
+      'zh': '暂无订单',
+      'ja': '注文履歴がありません',
+    },
+    'orderHistoryEmptyDesc': {
+      'ko': '첫 주문을 시작해보세요',
+      'en': 'Start your first order',
+      'th': 'เริ่มสั่งซื้อครั้งแรกของคุณ',
+      'vi': 'Bắt đầu đơn hàng đầu tiên của bạn',
+      'zh': '开始您的第一笔订单',
+      'ja': '最初の注文を始めましょう',
+    },
+    'orderDetailTitle': {
+      'ko': '주문 상세',
+      'en': 'Order details',
+      'th': 'รายละเอียดคำสั่งซื้อ',
+      'vi': 'Chi tiết đơn hàng',
+      'zh': '订单详情',
+      'ja': '注文詳細',
+    },
+    'orderItems': {
+      'ko': '주문 상품',
+      'en': 'Items',
+      'th': 'สินค้าที่สั่ง',
+      'vi': 'Sản phẩm',
+      'zh': '订单商品',
+      'ja': '注文商品',
+    },
+    'orderRecipient': {
+      'ko': '받는 분',
+      'en': 'Recipient',
+      'th': 'ผู้รับ',
+      'vi': 'Người nhận',
+      'zh': '收货人',
+      'ja': 'お届け先',
+    },
+    'orderNumberLabel': {
+      'ko': '주문번호',
+      'en': 'Order no.',
+      'th': 'หมายเลขคำสั่งซื้อ',
+      'vi': 'Mã đơn hàng',
+      'zh': '订单号',
+      'ja': '注文番号',
+    },
+    'orderDateLabel': {
+      'ko': '주문일시',
+      'en': 'Order date',
+      'th': 'วันที่สั่งซื้อ',
+      'vi': 'Ngày đặt',
+      'zh': '下单时间',
+      'ja': '注文日時',
+    },
+    'orderRequestMessage': {
+      'ko': '요청사항',
+      'en': 'Note',
+      'th': 'หมายเหตุ',
+      'vi': 'Ghi chú',
+      'zh': '备注',
+      'ja': 'リクエスト',
+    },
+    'orderStatusPendingDeposit': {
+      'ko': '입금 대기',
+      'en': 'Awaiting deposit',
+      'th': 'รอชำระเงิน',
+      'vi': 'Chờ thanh toán',
+      'zh': '等待付款',
+      'ja': '入金待ち',
+    },
+    'orderStatusCheckingDeposit': {
+      'ko': '입금 확인중',
+      'en': 'Verifying deposit',
+      'th': 'กำลังตรวจสอบการชำระ',
+      'vi': 'Đang xác nhận thanh toán',
+      'zh': '确认付款中',
+      'ja': '入金確認中',
+    },
+    'orderStatusPaid': {
+      'ko': '결제 완료',
+      'en': 'Paid',
+      'th': 'ชำระเงินแล้ว',
+      'vi': 'Đã thanh toán',
+      'zh': '付款完成',
+      'ja': '支払い完了',
+    },
+    'orderStatusAccepted': {
+      'ko': '배송 접수',
+      'en': 'Order accepted',
+      'th': 'รับคำสั่งซื้อแล้ว',
+      'vi': 'Đã tiếp nhận',
+      'zh': '已受理配送',
+      'ja': '配送受付',
+    },
+    'orderStatusPreparing': {
+      'ko': '배송 준비',
+      'en': 'Preparing',
+      'th': 'กำลังเตรียมจัดส่ง',
+      'vi': 'Đang chuẩn bị',
+      'zh': '备货中',
+      'ja': '配送準備中',
+    },
+    'orderStatusInTransit': {
+      'ko': '배송 중',
+      'en': 'Out for delivery',
+      'th': 'กำลังจัดส่ง',
+      'vi': 'Đang giao',
+      'zh': '配送中',
+      'ja': '配送中',
+    },
+    'orderStatusDelivered': {
+      'ko': '배송 완료',
+      'en': 'Delivered',
+      'th': 'จัดส่งสำเร็จ',
+      'vi': 'Đã giao',
+      'zh': '已送达',
+      'ja': '配送完了',
+    },
+    'orderStatusCancelled': {
+      'ko': '주문 취소',
+      'en': 'Cancelled',
+      'th': 'ยกเลิกแล้ว',
+      'vi': 'Đã hủy',
+      'zh': '已取消',
+      'ja': '注文キャンセル',
+    },
+
+    // ── Deposit (bank transfer) ────────────────────────────────────────────────
+    'depositGuide': {
+      'ko': '입금 안내',
+      'en': 'Deposit info',
+      'th': 'ข้อมูลการโอนเงิน',
+      'vi': 'Thông tin chuyển khoản',
+      'zh': '转账信息',
+      'ja': '振込のご案内',
+    },
+    'bankLabel': {
+      'ko': '은행',
+      'en': 'Bank',
+      'th': 'ธนาคาร',
+      'vi': 'Ngân hàng',
+      'zh': '银行',
+      'ja': '銀行',
+    },
+    'accountNumberLabel': {
+      'ko': '계좌번호',
+      'en': 'Account no.',
+      'th': 'เลขที่บัญชี',
+      'vi': 'Số tài khoản',
+      'zh': '账号',
+      'ja': '口座番号',
+    },
+    'accountHolderLabel': {
+      'ko': '예금주',
+      'en': 'Account holder',
+      'th': 'ชื่อบัญชี',
+      'vi': 'Chủ tài khoản',
+      'zh': '开户人',
+      'ja': '口座名義',
+    },
+    'depositComplete': {
+      'ko': '입금 완료',
+      'en': "I've paid",
+      'th': 'โอนเงินแล้ว',
+      'vi': 'Đã chuyển khoản',
+      'zh': '已付款',
+      'ja': '入金完了',
+    },
+    'depositReportedTitle': {
+      'ko': '입금 확인 요청이 접수되었어요',
+      'en': 'Payment report received',
+      'th': 'รับแจ้งการชำระแล้ว',
+      'vi': 'Đã nhận thông báo thanh toán',
+      'zh': '已收到付款通知',
+      'ja': '入金のお知らせを受け付けました',
+    },
+    'depositReportedDesc': {
+      'ko': '입금 확인 후 주문이 확정됩니다',
+      'en': 'Your order will be confirmed after we verify the deposit',
+      'th': 'คำสั่งซื้อจะได้รับการยืนยันหลังตรวจสอบการชำระ',
+      'vi': 'Đơn hàng sẽ được xác nhận sau khi kiểm tra thanh toán',
+      'zh': '确认到账后订单将被确认',
+      'ja': '入金確認後に注文が確定します',
+    },
+    'copiedAccount': {
+      'ko': '계좌번호를 복사했어요',
+      'en': 'Account number copied',
+      'th': 'คัดลอกเลขบัญชีแล้ว',
+      'vi': 'Đã sao chép số tài khoản',
+      'zh': '已复制账号',
+      'ja': '口座番号をコピーしました',
+    },
+    'confirm': {
+      'ko': '확인',
+      'en': 'OK',
+      'th': 'ตกลง',
+      'vi': 'Đồng ý',
+      'zh': '确定',
+      'ja': '確認',
+    },
   };
 
   String _s(String key) =>
@@ -567,6 +788,29 @@ class AppLocalizations {
   String get languageSettings => _s('languageSettings');
   String get selectLanguage => _s('selectLanguage');
 
+  // Orders
+  String get orderHistory => _s('orderHistory');
+  String get orderHistoryMenuDesc => _s('orderHistoryMenuDesc');
+  String get orderHistoryEmpty => _s('orderHistoryEmpty');
+  String get orderHistoryEmptyDesc => _s('orderHistoryEmptyDesc');
+  String get orderDetailTitle => _s('orderDetailTitle');
+  String get orderItems => _s('orderItems');
+  String get orderRecipient => _s('orderRecipient');
+  String get orderNumberLabel => _s('orderNumberLabel');
+  String get orderDateLabel => _s('orderDateLabel');
+  String get orderRequestMessage => _s('orderRequestMessage');
+
+  // Deposit (bank transfer)
+  String get depositGuide => _s('depositGuide');
+  String get bankLabel => _s('bankLabel');
+  String get accountNumberLabel => _s('accountNumberLabel');
+  String get accountHolderLabel => _s('accountHolderLabel');
+  String get depositComplete => _s('depositComplete');
+  String get depositReportedTitle => _s('depositReportedTitle');
+  String get depositReportedDesc => _s('depositReportedDesc');
+  String get copiedAccount => _s('copiedAccount');
+  String get confirm => _s('confirm');
+
   // Address
   String get addAddress => _s('addAddress');
   String get addressNameLabel => _s('addressNameLabel');
@@ -589,6 +833,17 @@ class AppLocalizations {
   String get profileGuestDesc => _s('profileGuestDesc');
 
   // Parameterized
+  String orderStatusLabel(OrderProgress progress) => switch (progress) {
+        OrderProgress.pendingDeposit => _s('orderStatusPendingDeposit'),
+        OrderProgress.checkingDeposit => _s('orderStatusCheckingDeposit'),
+        OrderProgress.paid => _s('orderStatusPaid'),
+        OrderProgress.accepted => _s('orderStatusAccepted'),
+        OrderProgress.preparing => _s('orderStatusPreparing'),
+        OrderProgress.inTransit => _s('orderStatusInTransit'),
+        OrderProgress.delivered => _s('orderStatusDelivered'),
+        OrderProgress.cancelled => _s('orderStatusCancelled'),
+      };
+
   String sortModeLabel(SortMode mode) => switch (mode) {
         SortMode.recommended => _s('sortRecommended'),
         SortMode.latest => _s('sortLatest'),

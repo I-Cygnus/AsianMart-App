@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -9,6 +10,8 @@ import 'package:asian_mart_app/core/network/api_client.dart';
 import 'package:asian_mart_app/core/state/app_controller.dart';
 import 'package:asian_mart_app/core/theme/app_theme.dart';
 import 'package:asian_mart_app/firebase_options.dart';
+import 'package:asian_mart_app/presentation/admin/admin_home_page.dart';
+import 'package:asian_mart_app/presentation/delivery/delivery_home_page.dart';
 import 'package:asian_mart_app/presentation/shell/storefront_shell.dart';
 
 final _localNotifications = FlutterLocalNotificationsPlugin();
@@ -117,6 +120,25 @@ class _AsiaMartAppState extends State<AsiaMartApp> {
       sound: true,
     );
 
+    // FCM 기기 토큰을 컨트롤러에 주입(로그인 시 서버 등록). 갱신도 반영.
+    // iOS 실기기는 APNs 토큰이 먼저 잡혀야 getToken()이 성공한다.
+    try {
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final apns = await messaging.getAPNSToken();
+        debugPrint('[FCM] APNs token: ${apns ?? "(null — APNs 미설정/시뮬레이터)"}');
+      }
+      final fcmToken = await messaging.getToken();
+      if (fcmToken != null) {
+        debugPrint('[FCM] device token = $fcmToken');
+        _controller.setFcmToken(fcmToken);
+      } else {
+        debugPrint('[FCM] getToken() returned null — 토큰 발급 실패(등록 불가)');
+      }
+    } catch (e) {
+      debugPrint('[FCM] getToken() 실패: $e');
+    }
+    messaging.onTokenRefresh.listen(_controller.setFcmToken);
+
     FirebaseMessaging.onMessage.listen(_showForegroundNotification);
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       debugPrint('[FCM] opened: ${message.notification?.title}');
@@ -137,7 +159,18 @@ class _AsiaMartAppState extends State<AsiaMartApp> {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: AppLocalizations.supportedLocales,
-      home: StorefrontShell(controller: _controller),
+      home: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          if (_controller.isAdmin) {
+            return AdminHomePage(controller: _controller);
+          }
+          if (_controller.isDeliver) {
+            return DeliveryHomePage(controller: _controller);
+          }
+          return StorefrontShell(controller: _controller);
+        },
+      ),
     );
   }
 }

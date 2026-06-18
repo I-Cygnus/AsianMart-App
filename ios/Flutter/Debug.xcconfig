@@ -1,1 +1,7 @@
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
 #include "Generated.xcconfig"
+
+// FCM 푸시: 서명팀 + Push Notifications 엔타이틀먼트 (관리자 실기기 수신용)
+DEVELOPMENT_TEAM = M43KZ466N2
+CODE_SIGN_STYLE = Automatic
+CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements

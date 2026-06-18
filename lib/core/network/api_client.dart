@@ -4,9 +4,13 @@ import 'dart:io';
 import 'package:asian_mart_app/core/config/api_config.dart';
 import 'package:asian_mart_app/core/network/api_exception.dart';
 import 'package:asian_mart_app/domain/entities/address.dart';
+import 'package:asian_mart_app/domain/entities/admin_order.dart';
 import 'package:asian_mart_app/domain/entities/app_user.dart';
 import 'package:asian_mart_app/domain/entities/cart_entry.dart';
 import 'package:asian_mart_app/domain/entities/cart_snapshot.dart';
+import 'package:asian_mart_app/domain/entities/delivery.dart';
+import 'package:asian_mart_app/domain/entities/order_detail.dart';
+import 'package:asian_mart_app/domain/entities/order_history_item.dart';
 import 'package:asian_mart_app/domain/entities/product.dart';
 import 'package:asian_mart_app/domain/entities/wishlist_item.dart';
 
@@ -43,7 +47,7 @@ class ApiClient {
     return products;
   }
 
-  Future<String> login({
+  Future<({String accessToken, List<String> roles})> login({
     required String email,
     required String password,
   }) async {
@@ -56,7 +60,14 @@ class ApiClient {
       },
     );
     final body = _asMap(response.data);
-    return body['accessToken'] as String? ?? '';
+    final roles = (body['userRoles'] as List<dynamic>?)
+            ?.whereType<String>()
+            .toList() ??
+        const <String>[];
+    return (
+      accessToken: body['accessToken'] as String? ?? '',
+      roles: roles,
+    );
   }
 
   Future<void> signup({
@@ -83,6 +94,33 @@ class ApiClient {
       'POST',
       '/api/auth/logout',
       accessToken: accessToken,
+    );
+  }
+
+  /// FCM 기기 토큰 등록(로그인 사용자 기준 업서트).
+  Future<void> registerDeviceToken({
+    required String accessToken,
+    required String token,
+    String? platform,
+  }) async {
+    await _send(
+      'POST',
+      '/api/users/device-token',
+      accessToken: accessToken,
+      body: {'token': token, 'platform': platform},
+    );
+  }
+
+  /// FCM 기기 토큰 삭제(로그아웃 시).
+  Future<void> deleteDeviceToken({
+    required String accessToken,
+    required String token,
+  }) async {
+    await _send(
+      'DELETE',
+      '/api/users/device-token',
+      accessToken: accessToken,
+      body: {'token': token},
     );
   }
 
@@ -273,24 +311,28 @@ class ApiClient {
     );
   }
 
-  Future<void> placeOrder({
+  /// 주문 생성. 생성된 주문의 id를 반환한다(무통장 입금 확정에 사용).
+  Future<int> placeOrder({
     required String accessToken,
-    required int userId,
     required List<Map<String, int>> products,
     required num totalAmount,
     required String requestMessage,
+    required String recipientName,
+    required String recipientPhone,
+    required String recipientAddress,
   }) async {
-    await _send(
+    final response = await _send(
       'POST',
-      '/order/place',
+      '/api/order/place',
       accessToken: accessToken,
       body: {
-        'userId': userId,
         'totalAmount': totalAmount,
         'payAmount': totalAmount,
         'requestMessage': requestMessage,
-        'orderStatus': 'PENDING',
         'paymentType': 'BANK_TRANSFER',
+        'recipientName': recipientName,
+        'recipientPhone': recipientPhone,
+        'recipientAddress': recipientAddress,
         'products': products
             .map((item) => {
                   'productId': item['productId'],
@@ -298,6 +340,125 @@ class ApiClient {
                 })
             .toList(),
       },
+    );
+    final body = _asMap(response.data);
+    return (body['orderId'] as num?)?.toInt() ?? 0;
+  }
+
+  /// 고객 무통장 입금 통보: 주문(PLACED) → 입금 확인 대기(PAYMENT_PENDING).
+  Future<void> reportPayment({
+    required String accessToken,
+    required int orderId,
+  }) async {
+    await _send(
+      'POST',
+      '/api/order/$orderId/payment',
+      accessToken: accessToken,
+    );
+  }
+
+  /// 내 주문 내역 목록 (최신순).
+  Future<List<OrderHistoryItem>> fetchOrders(String accessToken) async {
+    final response = await _send(
+      'GET',
+      '/api/order',
+      accessToken: accessToken,
+    );
+    return _asList(response.data)
+        .whereType<Map<String, dynamic>>()
+        .map(OrderHistoryItem.fromJson)
+        .toList();
+  }
+
+  /// 주문 상세 (상품 목록 + 배송 정보).
+  Future<OrderDetail> fetchOrderDetail({
+    required String accessToken,
+    required int orderId,
+  }) async {
+    final response = await _send(
+      'GET',
+      '/api/order/$orderId',
+      accessToken: accessToken,
+    );
+    return OrderDetail.fromJson(_asMap(response.data));
+  }
+
+  // ── 루트 관리자 (주문 요청) ────────────────────────────────────────────────
+  /// 관리자 주문 상세: 배송지 + 상품 목록(이미지 포함).
+  Future<OrderDetail> fetchAdminOrderDetail({
+    required String accessToken,
+    required int orderId,
+  }) async {
+    final response = await _send(
+      'GET',
+      '/api/admin/order/$orderId',
+      accessToken: accessToken,
+    );
+    return OrderDetail.fromJson(_asMap(response.data));
+  }
+
+  /// 주문 요청 목록: 입금 대기(PLACED) + 입금 확인 대기(PAYMENT_PENDING).
+  Future<List<AdminOrder>> fetchAdminOrderRequests(String accessToken) async {
+    final response = await _send(
+      'GET',
+      '/api/admin/order/requests',
+      accessToken: accessToken,
+    );
+    return _asList(response.data)
+        .whereType<Map<String, dynamic>>()
+        .map(AdminOrder.fromJson)
+        .toList();
+  }
+
+  /// 관리자 입금 확인: 주문(PAYMENT_PENDING) → 확정(CONFIRMED).
+  Future<void> confirmOrder({
+    required String accessToken,
+    required int orderId,
+  }) async {
+    await _send(
+      'POST',
+      '/api/admin/order/$orderId/confirm',
+      accessToken: accessToken,
+    );
+  }
+
+  // ── 배송 (배송 기사 앱) ────────────────────────────────────────────────────
+  /// 배송 리스트 = 결제 완료(CONFIRMED) 주문 + 각 주문의 배송 상태.
+  Future<List<Delivery>> fetchDeliveries(String accessToken) async {
+    final response = await _send(
+      'GET',
+      '/api/delivery/orders',
+      accessToken: accessToken,
+    );
+    return _asList(response.data)
+        .whereType<Map<String, dynamic>>()
+        .map(Delivery.fromJson)
+        .toList();
+  }
+
+  /// 배송 접수: 확정 주문([orderId])에 대해 배송(ACCEPTED)을 생성한다.
+  Future<void> registerDelivery({
+    required String accessToken,
+    required int orderId,
+  }) async {
+    await _send(
+      'POST',
+      '/api/delivery/register',
+      accessToken: accessToken,
+      body: {'orderId': orderId},
+    );
+  }
+
+  /// 배송 상태를 다음 단계로 전이. [action]은 prepare | ship | complete.
+  Future<void> advanceDelivery({
+    required String accessToken,
+    required int deliveryId,
+    required String action,
+  }) async {
+    await _send(
+      'POST',
+      '/api/delivery/$deliveryId/$action',
+      accessToken: accessToken,
     );
   }
 

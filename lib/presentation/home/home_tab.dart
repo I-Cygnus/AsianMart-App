@@ -22,15 +22,15 @@ class _Category {
 const _kCategoryAll = _Category(id: null, label: '전체', icon: '🛒');
 
 const _kCategoryLabels = <int, (String, String)>{
-  1: ('쌀/잡곡', '🌾'),
-  2: ('소스/양념', '🫙'),
-  3: ('과자/간식', '🍘'),
-  4: ('음료', '🧃'),
-  5: ('라면/면류', '🍜'),
-  6: ('반찬/김치', '🥬'),
+  1: ('채소', '🥬'),
+  2: ('쌀/잡곡', '🌾'),
+  3: ('라면/면류', '🍜'),
+  4: ('소스/양념', '🫙'),
+  5: ('과자/간식', '🍘'),
+  6: ('음료', '🧃'),
   7: ('냉동식품', '🧊'),
   8: ('육류/해산물', '🐟'),
-  9: ('유제품', '🥛'),
+  9: ('반찬/김치', '🥗'),
   10: ('건강식품', '🌿'),
 };
 
@@ -124,7 +124,13 @@ class _HomeTabState extends State<HomeTab> {
   bool _categoryAllSelected = true;
 
   List<_Category> get _categories {
-    final ids = widget.products.map((p) => p.categoryId).toSet().toList()
+    // categoryId 0 = 분류 정보 없음(현재 백엔드 목록 응답엔 categoryId 미포함).
+    // 이 경우 카테고리 칩을 만들지 않아 "카테고리 0" 같은 빈 칩이 안 뜨도록 한다.
+    final ids = widget.products
+        .map((p) => p.categoryId)
+        .where((id) => id != 0)
+        .toSet()
+        .toList()
       ..sort();
     return [
       _kCategoryAll,
@@ -281,10 +287,24 @@ class _HomeTabState extends State<HomeTab> {
       );
     }
     if (widget.products.isEmpty) {
-      return EmptyState(
-        icon: Icons.inventory_2_outlined,
-        title: '등록된 상품이 없어요',
-        description: l10n.pullToRefresh,
+      // Wrapped in a scrollable RefreshIndicator so the user can pull to
+      // re-fetch — otherwise the empty state has no way to recover once the
+      // initial load returns nothing.
+      return RefreshIndicator(
+        onRefresh: widget.onRefresh,
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: EmptyState(
+                icon: Icons.inventory_2_outlined,
+                title: '등록된 상품이 없어요',
+                description: l10n.pullToRefresh,
+              ),
+            ),
+          ),
+        ),
       );
     }
 

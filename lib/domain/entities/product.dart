@@ -31,7 +31,7 @@ class Product {
         return '판매중';
       case 'STOPPED':
         return '판매중지';
-      case 'OUT_OF_STOCK':
+      case 'SOLD_OUT':
         return '품절';
       default:
         return '일시품절';
@@ -58,7 +58,7 @@ class Product {
           DateTime.fromMillisecondsSinceEpoch(0),
       updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
-      imageUrl: json['mainImageUrl'] as String?,
+      imageUrl: (json['thumbnailUrl'] ?? json['mainImageUrl']) as String?,
     );
   }
 }

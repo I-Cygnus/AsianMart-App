@@ -21,6 +21,7 @@ class ProfileTab extends StatelessWidget {
     required this.onSetDefault,
     required this.onDeleteAddress,
     required this.onOpenLanguageSettings,
+    required this.onOpenOrders,
   });
 
   final bool isAuthenticated;
@@ -41,6 +42,7 @@ class ProfileTab extends StatelessWidget {
   final ValueChanged<int> onSetDefault;
   final ValueChanged<int> onDeleteAddress;
   final VoidCallback onOpenLanguageSettings;
+  final VoidCallback onOpenOrders;
 
   @override
   Widget build(BuildContext context) {
@@ -74,6 +76,7 @@ class ProfileTab extends StatelessWidget {
                   onAddAddress: onAddAddress,
                   onSetDefault: onSetDefault,
                   onDeleteAddress: onDeleteAddress,
+                  onOpenOrders: onOpenOrders,
                 )
               : _GuestView(onRequireLogin: onRequireLogin),
         ),
@@ -156,6 +159,7 @@ class _AuthenticatedView extends StatelessWidget {
     required this.onAddAddress,
     required this.onSetDefault,
     required this.onDeleteAddress,
+    required this.onOpenOrders,
   });
 
   final AppUser? user;
@@ -173,6 +177,7 @@ class _AuthenticatedView extends StatelessWidget {
   }) onAddAddress;
   final ValueChanged<int> onSetDefault;
   final ValueChanged<int> onDeleteAddress;
+  final VoidCallback onOpenOrders;
 
   @override
   Widget build(BuildContext context) {
@@ -189,6 +194,13 @@ class _AuthenticatedView extends StatelessWidget {
         ),
         children: [
           _UserCard(user: user, onLogout: onLogout),
+          const SizedBox(height: 12),
+          _MenuRow(
+            icon: Icons.receipt_long_outlined,
+            title: l10n.orderHistory,
+            subtitle: l10n.orderHistoryMenuDesc,
+            onTap: onOpenOrders,
+          ),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -362,6 +374,67 @@ class _UserCard extends StatelessWidget {
             child: Text(l10n.signOut),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MenuRow extends StatelessWidget {
+  const _MenuRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppTheme.surface,
+      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                ),
+                child: Icon(icon, color: AppTheme.primary, size: 20),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.textPrimary)),
+                    const SizedBox(height: 2),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            fontSize: 12.5, color: AppTheme.textTertiary)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  size: 20, color: AppTheme.textTertiary),
+            ],
+          ),
+        ),
       ),
     );
   }

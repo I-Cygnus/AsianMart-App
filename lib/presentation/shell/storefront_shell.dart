@@ -9,6 +9,7 @@ import 'package:asian_mart_app/presentation/auth/auth_page.dart';
 import 'package:asian_mart_app/presentation/cart/cart_tab.dart';
 import 'package:asian_mart_app/presentation/checkout/checkout_page.dart';
 import 'package:asian_mart_app/presentation/home/home_tab.dart';
+import 'package:asian_mart_app/presentation/orders/order_history_page.dart';
 import 'package:asian_mart_app/presentation/product_detail/product_detail_page.dart';
 import 'package:asian_mart_app/presentation/profile/profile_tab.dart';
 import 'package:asian_mart_app/presentation/settings/language_settings_page.dart';
@@ -116,11 +117,23 @@ class _StorefrontShellState extends State<StorefrontShell> {
           onAddToCart: (quantity) =>
               _handleAddToCart(product, quantity: quantity),
           onBuyNow: (quantity) async {
-            await _handleAddToCart(product, quantity: quantity);
+            // 바로구매: 장바구니를 거치지 않고 해당 상품 하나만 결제 페이지로.
+            if (!widget.controller.isAuthenticated) {
+              await _openAuthPage();
+              return;
+            }
             if (!mounted) {
               return;
             }
-            await _openCheckout();
+            await Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => CheckoutPage(
+                  controller: widget.controller,
+                  directProduct: product,
+                  directQuantity: quantity,
+                ),
+              ),
+            );
           },
           onToggleWishlist: () => _handleWishlistToggle(product.id),
           isWishlisted:
@@ -282,6 +295,14 @@ class _StorefrontShellState extends State<StorefrontShell> {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => const LanguageSettingsPage(),
+                  ),
+                );
+              },
+              onOpenOrders: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        OrderHistoryPage(controller: widget.controller),
                   ),
                 );
               },
