@@ -54,7 +54,7 @@ class CartEntry {
       sellingPrice: (json['sellingPrice'] as num?)?.toDouble() ?? 0,
       itemTotalPrice: (json['itemTotalPrice'] as num?)?.toDouble() ?? 0,
       productStatus: json['productStatus'] as String? ?? 'STOPPED',
-      inventoryStatus: json['inventoryStatus'] as String? ?? 'OUT_OF_STOCK',
+      inventoryStatus: json['inventoryStatus'] as String? ?? 'NORMAL',
       imageUrl: json['mainImageUrl'] as String?,
     );
   }

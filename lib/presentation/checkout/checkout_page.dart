@@ -269,20 +269,28 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
 
     setState(() => _submitting = true);
-    final result = await widget.controller.placeOrder(
-      requestMessage: _noteController.text,
-      recipientName: _nameController.text,
-      recipientPhone: _phoneController.text,
-      recipientAddress: recipientAddress,
-      products: _lines
-          .map((line) => {
-                'productId': line.productId,
-                'productQuantity': line.quantity,
-              })
-          .toList(),
-      totalAmount: _total,
-      clearSelectedCart: !_isDirect,
-    );
+    // 바로구매는 단일 상품을 직접 주문하고, 장바구니 주문은 서버가 선택 항목을
+    // 한 번에 처리(금액 계산 + 장바구니 정리)하는 체크아웃 API를 사용한다.
+    final result = _isDirect
+        ? await widget.controller.placeOrder(
+            requestMessage: _noteController.text,
+            recipientName: _nameController.text,
+            recipientPhone: _phoneController.text,
+            recipientAddress: recipientAddress,
+            products: _lines
+                .map((line) => {
+                      'productId': line.productId,
+                      'productQuantity': line.quantity,
+                    })
+                .toList(),
+            totalAmount: _total,
+          )
+        : await widget.controller.checkoutCart(
+            requestMessage: _noteController.text,
+            recipientName: _nameController.text,
+            recipientPhone: _phoneController.text,
+            recipientAddress: recipientAddress,
+          );
     if (!mounted) return;
     setState(() => _submitting = false);
     if (result.error != null) {

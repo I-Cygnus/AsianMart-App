@@ -463,6 +463,31 @@ class ApiClient {
     return (body['orderId'] as num?)?.toInt() ?? 0;
   }
 
+  /// 장바구니 체크아웃: 선택된 회원 장바구니 상품으로 주문을 생성한다.
+  /// 서버가 금액을 계산하고 주문된 상품을 장바구니에서 비운다. 생성된 주문 id를 반환.
+  Future<int> checkoutCart({
+    required String accessToken,
+    required String recipientName,
+    required String recipientPhone,
+    required String recipientAddress,
+    required String requestMessage,
+  }) async {
+    final response = await _send(
+      'POST',
+      '/api/cart/checkout',
+      accessToken: accessToken,
+      body: {
+        'recipientName': recipientName,
+        'recipientPhone': recipientPhone,
+        'recipientAddress': recipientAddress,
+        'paymentType': 'BANK_TRANSFER',
+        'requestMessage': requestMessage,
+      },
+    );
+    final body = _asMap(response.data);
+    return (body['orderId'] as num?)?.toInt() ?? 0;
+  }
+
   /// 고객 무통장 입금 통보: 주문(PLACED) → 입금 확인 대기(PAYMENT_PENDING).
   Future<void> reportPayment({
     required String accessToken,

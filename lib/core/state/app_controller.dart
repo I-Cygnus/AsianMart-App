@@ -934,13 +934,12 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  /// 주문 생성. 결제 페이지에서 "주문하기"를 눌렀을 때만 호출된다.
+  /// 바로구매 주문 생성. 상품 상세의 "바로구매"에서 단일 상품을 주문할 때 호출된다.
+  /// (장바구니 주문은 [checkoutCart]를 사용한다.)
   ///
-  /// - [products]: `[{productId, productQuantity}]` 형태. 장바구니 주문이면 선택 항목,
-  ///   바로구매면 단일 상품.
+  /// - [products]: `[{productId, productQuantity}]` 형태의 단일 상품.
   /// - 배송 정보(이름/연락처/주소)는 저장된 배송지 또는 사용자가 결제 페이지에서
   ///   직접 입력한 값을 그대로 전달받는다. (저장된 배송지가 없어도 주문 가능)
-  /// - [clearSelectedCart]가 true이면(=장바구니 주문) 성공 후 선택 항목을 비운다.
   ///
   /// 성공 시 생성된 주문 id를 [orderId]로 돌려준다(무통장 입금 안내 → 결제 완료에 사용).
   Future<({int? orderId, String? error})> placeOrder({
@@ -950,7 +949,6 @@ class AppController extends ChangeNotifier {
     required String recipientAddress,
     required List<Map<String, int>> products,
     required double totalAmount,
-    bool clearSelectedCart = false,
   }) async {
     if (!isAuthenticated || _currentUser == null) {
       return (orderId: null, error: '로그인이 필요합니다.');
@@ -974,14 +972,43 @@ class AppController extends ChangeNotifier {
         recipientAddress: recipientAddress.trim(),
         products: products,
       );
-      if (clearSelectedCart) {
-        final snapshot = await _apiClient.deleteSelectedCartItems(
-          accessToken: _accessToken,
-          guestToken: isAuthenticated ? null : _guestToken,
-        );
-        _cartItems = snapshot.items;
-        notifyListeners();
-      }
+      return (orderId: orderId, error: null);
+    } catch (error) {
+      return (orderId: null, error: _messageOf(error));
+    }
+  }
+
+  /// 장바구니 주문: 선택된 회원 장바구니 상품으로 주문을 생성한다(서버 원자 처리).
+  ///
+  /// 서버가 가격을 다시 계산하고, 주문 성공 시 주문된 상품을 장바구니에서 비운다.
+  /// 성공 후 장바구니를 새로고침해 상태를 동기화한다.
+  Future<({int? orderId, String? error})> checkoutCart({
+    required String requestMessage,
+    required String recipientName,
+    required String recipientPhone,
+    required String recipientAddress,
+  }) async {
+    if (!isAuthenticated || _currentUser == null) {
+      return (orderId: null, error: '로그인이 필요합니다.');
+    }
+    if (selectedCartItems.isEmpty) {
+      return (orderId: null, error: '주문할 상품을 먼저 선택해 주세요.');
+    }
+    if (recipientName.trim().isEmpty ||
+        recipientPhone.trim().isEmpty ||
+        recipientAddress.trim().isEmpty) {
+      return (orderId: null, error: '배송 정보를 모두 입력해 주세요.');
+    }
+
+    try {
+      final orderId = await _apiClient.checkoutCart(
+        accessToken: _accessToken!,
+        requestMessage: requestMessage.trim(),
+        recipientName: recipientName.trim(),
+        recipientPhone: recipientPhone.trim(),
+        recipientAddress: recipientAddress.trim(),
+      );
+      await loadCart();
       return (orderId: orderId, error: null);
     } catch (error) {
       return (orderId: null, error: _messageOf(error));
