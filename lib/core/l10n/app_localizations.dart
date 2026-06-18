@@ -537,6 +537,22 @@ class AppLocalizations {
       'zh': '查看您的订单',
       'ja': 'これまでの注文を確認',
     },
+    'orderDeliverySection': {
+      'ko': '주문/배송 현황',
+      'en': 'Orders & delivery',
+      'th': 'คำสั่งซื้อและการจัดส่ง',
+      'vi': 'Đơn hàng & giao hàng',
+      'zh': '订单/配送状态',
+      'ja': '注文・配送状況',
+    },
+    'seeAll': {
+      'ko': '전체보기',
+      'en': 'See all',
+      'th': 'ดูทั้งหมด',
+      'vi': 'Xem tất cả',
+      'zh': '查看全部',
+      'ja': 'すべて見る',
+    },
     'orderHistoryEmpty': {
       'ko': '주문 내역이 없어요',
       'en': 'No orders yet',
@@ -815,6 +831,8 @@ class AppLocalizations {
 
   // Orders
   String get orderHistory => _s('orderHistory');
+  String get orderDeliverySection => _s('orderDeliverySection');
+  String get seeAll => _s('seeAll');
   String get orderHistoryMenuDesc => _s('orderHistoryMenuDesc');
   String get orderHistoryEmpty => _s('orderHistoryEmpty');
   String get orderHistoryEmptyDesc => _s('orderHistoryEmptyDesc');

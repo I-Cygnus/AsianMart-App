@@ -111,13 +111,35 @@ class _AdminPaymentPageState extends State<AdminPaymentPage> {
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, i) {
                 if (i == 0) {
+                  final pending = orders.where((o) => o.canConfirm).length;
                   return Padding(
-                    padding: const EdgeInsets.only(top: 6, bottom: 2),
-                    child: Text('주문 요청 ${orders.length}건',
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textTertiary)),
+                    padding: const EdgeInsets.only(top: 6, bottom: 6),
+                    child: Row(
+                      children: [
+                        Text('총 ${orders.length}건',
+                            style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textSecondary)),
+                        if (pending > 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withValues(alpha: 0.10),
+                              borderRadius:
+                                  BorderRadius.circular(AppTheme.radiusFull),
+                            ),
+                            child: Text('확인 대기 $pending',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.primary)),
+                          ),
+                        ],
+                      ],
+                    ),
                   );
                 }
                 final order = orders[i - 1];
@@ -141,125 +163,94 @@ class _OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
+    final actionable = order.canConfirm; // PAYMENT_PENDING
+    return Material(
+      color: AppTheme.surface,
+      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+      child: InkWell(
+        onTap: onConfirm,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            border: Border.all(
+              color: actionable
+                  ? AppTheme.primary.withValues(alpha: 0.4)
+                  : AppTheme.border,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _StatusTag(progress: order.progress),
-              const Spacer(),
-              Text('#${order.orderId}',
-                  style: const TextStyle(
-                      fontSize: 12.5,
-                      color: AppTheme.textTertiary,
-                      fontWeight: FontWeight.w600,
-                      fontFeatures: [FontFeature.tabularFigures()])),
+              Row(
+                children: [
+                  _StatusTag(progress: order.progress),
+                  const Spacer(),
+                  if (order.orderDate != null)
+                    Text(formatDate(order.orderDate!),
+                        style: const TextStyle(
+                            fontSize: 12, color: AppTheme.textTertiary)),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(order.recipientName,
+                            style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: _ink)),
+                        const SizedBox(height: 3),
+                        Text('주문 No. ${order.orderId}',
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textTertiary,
+                                fontFeatures: [FontFeature.tabularFigures()])),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(formatPrice(order.paymentAmount.toDouble()),
+                      style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: _ink,
+                          letterSpacing: -0.4,
+                          fontFeatures: [FontFeature.tabularFigures()])),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 1, color: AppTheme.divider),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Spacer(),
+                  if (actionable) ...[
+                    const Text('주문 확인',
+                        style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.primary)),
+                    const SizedBox(width: 3),
+                    const Icon(Icons.arrow_forward_rounded,
+                        size: 15, color: AppTheme.primary),
+                  ] else
+                    const Text('고객 입금 대기 중',
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textTertiary)),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 16),
-          const Text('입금 금액',
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textTertiary)),
-          const SizedBox(height: 3),
-          Text(formatPrice(order.paymentAmount.toDouble()),
-              style: const TextStyle(
-                  fontSize: 25,
-                  fontWeight: FontWeight.w800,
-                  color: _ink,
-                  letterSpacing: -0.6,
-                  fontFeatures: [FontFeature.tabularFigures()])),
-          const SizedBox(height: 16),
-          const Divider(height: 1, color: AppTheme.divider),
-          const SizedBox(height: 14),
-          _MetaRow(label: '주문번호', value: order.orderNo),
-          if (order.orderDate != null)
-            _MetaRow(label: '주문일시', value: formatDate(order.orderDate!)),
-          _MetaRow(
-            label: '받는 분',
-            value: '${order.recipientName}  ·  ${order.recipientPhone}',
-          ),
-          _MetaRow(label: '배송지', value: order.recipientAddress),
-          const SizedBox(height: 16),
-          if (order.canConfirm)
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: onConfirm,
-                style: FilledButton.styleFrom(
-                  backgroundColor: _ink,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  ),
-                ),
-                child: const Text('주문 확인',
-                    style: TextStyle(
-                        fontSize: 14.5, fontWeight: FontWeight.w700)),
-              ),
-            )
-          else
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 13),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: AppTheme.background,
-                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                border: Border.all(color: AppTheme.border),
-              ),
-              child: const Text('고객 입금 대기 중',
-                  style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textTertiary)),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 라벨-값 한 줄. 좌측 라벨은 고정폭으로 정렬해 표처럼 보이게 한다.
-class _MetaRow extends StatelessWidget {
-  const _MetaRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 9),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 64,
-            child: Text(label,
-                style: const TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.textTertiary,
-                    fontWeight: FontWeight.w500)),
-          ),
-          Expanded(
-            child: Text(value,
-                style: const TextStyle(
-                    fontSize: 13.5,
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w600,
-                    height: 1.4)),
-          ),
-        ],
+        ),
       ),
     );
   }

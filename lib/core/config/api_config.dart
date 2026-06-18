@@ -1,29 +1,16 @@
-import 'dart:io';
-
-import 'package:flutter/foundation.dart';
-
 class ApiConfig {
   ApiConfig._();
+
+  /// 클라우드(AWS EC2) 백엔드 기본 주소.
+  /// 로컬 개발 시 빌드에 다음을 넘겨 덮어쓸 수 있다:
+  ///   --dart-define=API_BASE_URL=http://localhost:8080
+  static const String _cloudBaseUrl = 'http://52.78.131.171:8080';
 
   static const String _overrideBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: '',
   );
 
-  // Default host for a physical Android device on the same Wi-Fi network.
-  // Override with --dart-define=API_BASE_URL=http://<your-ip>:8080 when needed.
-  static const String _androidDeviceBaseUrl = 'http://192.168.0.10:8080';
-
-  static String get baseUrl {
-    if (_overrideBaseUrl.isNotEmpty) {
-      return _overrideBaseUrl;
-    }
-    if (kIsWeb) {
-      return 'http://localhost:8080';
-    }
-    if (Platform.isAndroid) {
-      return _androidDeviceBaseUrl;
-    }
-    return 'http://localhost:8080';
-  }
+  static String get baseUrl =>
+      _overrideBaseUrl.isNotEmpty ? _overrideBaseUrl : _cloudBaseUrl;
 }

@@ -3,11 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:asian_mart_app/core/l10n/app_localizations.dart';
 import 'package:asian_mart_app/core/state/app_controller.dart';
 import 'package:asian_mart_app/core/state/app_scope.dart';
+import 'package:asian_mart_app/domain/entities/order_history_item.dart';
 import 'package:asian_mart_app/domain/entities/product.dart';
 import 'package:asian_mart_app/presentation/auth/auth_page.dart';
 import 'package:asian_mart_app/presentation/cart/cart_tab.dart';
 import 'package:asian_mart_app/presentation/checkout/checkout_page.dart';
 import 'package:asian_mart_app/presentation/home/home_tab.dart';
+import 'package:asian_mart_app/presentation/orders/order_detail_page.dart';
 import 'package:asian_mart_app/presentation/orders/order_history_page.dart';
 import 'package:asian_mart_app/presentation/product_detail/product_detail_page.dart';
 import 'package:asian_mart_app/presentation/product_list/product_list_page.dart';
@@ -221,8 +223,20 @@ class _StorefrontShellState extends State<StorefrontShell> {
   }
 
   void _openOrderInquiry() {
-    final l10n = AppLocalizations.of(context);
-    _showSnack(l10n.comingSoon);
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => OrderHistoryPage(controller: widget.controller),
+      ),
+    );
+  }
+
+  void _openOrderDetail(OrderHistoryItem order) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            OrderDetailPage(controller: widget.controller, order: order),
+      ),
+    );
   }
 
   @override
@@ -375,6 +389,10 @@ class _StorefrontShellState extends State<StorefrontShell> {
               onOpenWishlist: _openWishlist,
               onOpenCart: () => setState(() => _currentIndex = 2),
               onOpenOrderInquiry: _openOrderInquiry,
+              recentOrders: widget.controller.orders,
+              ordersLoading: widget.controller.ordersLoading,
+              onLoadOrders: widget.controller.loadOrders,
+              onOpenOrder: _openOrderDetail,
             ),
           ];
 

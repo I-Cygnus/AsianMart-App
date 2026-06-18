@@ -9,24 +9,32 @@ import 'package:asian_mart_app/domain/entities/product_category.dart';
 import 'package:asian_mart_app/presentation/widgets/product_image.dart';
 import 'package:asian_mart_app/presentation/widgets/tab_header.dart';
 
-const _kCategoryIcons = <int, String>{
-  1: '🌾',
-  2: '🫙',
-  3: '🍘',
-  4: '🧃',
-  5: '🍜',
-  6: '🥬',
-  7: '🧊',
-  8: '🐟',
-  9: '🥛',
-  10: '🌿',
-};
-
-String _categoryIcon(ProductCategory category) {
-  if (category.id == null) {
-    return '🛒';
+/// 카테고리명 기반 벡터 아이콘 매핑. (카테고리 id는 가변적이라 이름으로 매칭)
+IconData _categoryIcon(ProductCategory category) {
+  if (category.id == null) return Icons.widgets_rounded; // 전체
+  final n = category.name;
+  bool has(String s) => n.contains(s);
+  if (has('채소') || has('야채')) return Icons.eco_rounded;
+  if (has('과일')) return Icons.local_florist_rounded;
+  if (has('쌀') || has('잡곡') || has('곡물')) return Icons.rice_bowl_rounded;
+  if (has('라면') || has('면')) return Icons.ramen_dining_rounded;
+  if (has('소스') || has('양념')) return Icons.local_dining_rounded;
+  if (has('과자') || has('간식') || has('스낵')) return Icons.cookie_rounded;
+  if (has('음료') || has('주스') || has('생수') || has('워터')) {
+    return Icons.local_drink_rounded;
   }
-  return _kCategoryIcons[category.id] ?? '📦';
+  if (has('커피')) return Icons.local_cafe_rounded;
+  if (has('주류') || has('술')) return Icons.liquor_rounded;
+  if (has('냉동')) return Icons.ac_unit_rounded;
+  if (has('육류') || has('고기') || has('정육')) return Icons.kebab_dining_rounded;
+  if (has('해산물') || has('수산') || has('생선')) return Icons.set_meal_rounded;
+  if (has('유제품') || has('우유') || has('치즈')) return Icons.icecream_rounded;
+  if (has('베이커리') || has('빵')) return Icons.bakery_dining_rounded;
+  if (has('건강') || has('영양')) return Icons.medical_services_rounded;
+  if (has('김치') || has('반찬')) return Icons.rice_bowl_rounded;
+  if (has('의류') || has('패션') || has('옷')) return Icons.checkroom_rounded;
+  if (has('생활') || has('가정') || has('주방')) return Icons.home_rounded;
+  return Icons.storefront_rounded;
 }
 
 // ── Banner data ───────────────────────────────────────────────────────────────
@@ -192,7 +200,10 @@ class _HomeTabState extends State<HomeTab> {
                 onSelect: widget.onCategoryTap,
               ),
             ),
-          if (widget.recommendedProducts.isNotEmpty)
+          if (widget.recommendedProducts.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: Container(height: 10, color: AppTheme.background),
+            ),
             SliverToBoxAdapter(
               child: _RecommendSection(
                 products: widget.recommendedProducts,
@@ -202,8 +213,10 @@ class _HomeTabState extends State<HomeTab> {
                 onAddToCart: widget.onAddToCart,
               ),
             ),
-          if (widget.recommendedProducts.isNotEmpty)
-            const SliverToBoxAdapter(child: SizedBox(height: 8)),
+          ],
+          SliverToBoxAdapter(
+            child: Container(height: 10, color: AppTheme.background),
+          ),
           SliverToBoxAdapter(
             child: _PopularSection(
               products: widget.popularProducts,
@@ -608,38 +621,51 @@ class _QuickCategories extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: categories.map((cat) {
+            final isAll = cat.id == null;
             return GestureDetector(
               onTap: () => onSelect(cat),
+              behavior: HitTestBehavior.opaque,
               child: Padding(
-                padding: const EdgeInsets.only(right: 18),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: AppTheme.background,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppTheme.border),
-                      ),
-                      child: Center(
-                        child: Text(
+                padding: const EdgeInsets.only(right: 16),
+                child: SizedBox(
+                  width: 60,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: isAll
+                              ? AppTheme.primary.withValues(alpha: 0.10)
+                              : AppTheme.background,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
                           _categoryIcon(cat),
-                          style: const TextStyle(fontSize: 22),
+                          size: 25,
+                          color:
+                              isAll ? AppTheme.primary : AppTheme.textPrimary,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      cat.name,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: AppTheme.textSecondary,
+                      const SizedBox(height: 7),
+                      Text(
+                        cat.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight:
+                              isAll ? FontWeight.w700 : FontWeight.w600,
+                          color: isAll
+                              ? AppTheme.primary
+                              : AppTheme.textSecondary,
+                          letterSpacing: -0.2,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             );
@@ -664,16 +690,26 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+      padding: const EdgeInsets.fromLTRB(16, 22, 16, 14),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          Container(
+            width: 3,
+            height: 17,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.primary,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
           Text(
             title,
             style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
               color: AppTheme.textPrimary,
-              letterSpacing: -0.3,
+              letterSpacing: -0.4,
             ),
           ),
           const Spacer(),
@@ -681,9 +717,9 @@ class _SectionHeader extends StatelessWidget {
             Text(
               trailing!,
               style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.textSecondary,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textTertiary,
               ),
             ),
         ],
@@ -712,7 +748,7 @@ class _RecommendSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AppTheme.sectionRecommend,
+      color: AppTheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -762,7 +798,7 @@ class _PopularSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AppTheme.sectionPopular,
+      color: AppTheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
