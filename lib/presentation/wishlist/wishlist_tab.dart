@@ -23,6 +23,7 @@ class WishlistTab extends StatefulWidget {
     required this.onRemove,
     required this.onAddToCart,
     required this.onOpenProduct,
+    this.onBack,
   });
 
   final bool isAuthenticated;
@@ -38,6 +39,7 @@ class WishlistTab extends StatefulWidget {
   final ValueChanged<int> onRemove;
   final ValueChanged<int> onAddToCart;
   final ValueChanged<int> onOpenProduct;
+  final VoidCallback? onBack;
 
   @override
   State<WishlistTab> createState() => _WishListTabState();
@@ -124,14 +126,68 @@ class _WishListTabState extends State<WishlistTab> {
       );
     }
 
-    return Column(
-      children: [
-        TabHeader(
-          title: l10n.wishlistTitle,
-          badge: widget.totalCount > 0 ? '${widget.totalCount}' : null,
-        ),
-        Expanded(child: body),
-      ],
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      body: Column(
+        children: [
+          TabHeader(
+            leading: widget.onBack != null
+                ? Row(
+                    children: [
+                      IconButton(
+                        onPressed: widget.onBack,
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                        iconSize: 20,
+                        color: AppTheme.textPrimary,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        l10n.wishlistTitle,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textPrimary,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      if (widget.totalCount > 0) ...[
+                        const SizedBox(width: 7),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: 0.1),
+                            borderRadius:
+                                BorderRadius.circular(AppTheme.radiusFull),
+                          ),
+                          child: Text(
+                            '${widget.totalCount}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  )
+                : null,
+            title: widget.onBack == null ? l10n.wishlistTitle : null,
+            badge: widget.onBack == null && widget.totalCount > 0
+                ? '${widget.totalCount}'
+                : null,
+          ),
+          Expanded(child: body),
+        ],
+      ),
     );
   }
 

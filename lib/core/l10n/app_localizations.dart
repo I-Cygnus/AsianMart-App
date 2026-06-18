@@ -518,6 +518,22 @@ class AppLocalizations {
       'zh': '登录后可使用收藏、地址和结算功能。',
       'ja': 'ログインするとお気に入り、住所、注文機能が使えます。',
     },
+    'orderInquiry': {
+      'ko': '주문조회',
+      'en': 'Order history',
+      'th': 'ประวัติคำสั่งซื้อ',
+      'vi': 'Tra cứu đơn hàng',
+      'zh': '订单查询',
+      'ja': '注文履歴',
+    },
+    'comingSoon': {
+      'ko': '준비 중입니다.',
+      'en': 'Coming soon.',
+      'th': 'เร็ว ๆ นี้',
+      'vi': 'Sắp ra mắt.',
+      'zh': '即将推出。',
+      'ja': '準備中です。',
+    },
   };
 
   String _s(String key) =>
@@ -596,6 +612,8 @@ class AppLocalizations {
   String get authRequiredTitle => _s('authRequiredTitle');
   String get authRequiredDesc => _s('authRequiredDesc');
   String get profileGuestDesc => _s('profileGuestDesc');
+  String get orderInquiry => _s('orderInquiry');
+  String get comingSoon => _s('comingSoon');
 
   // Parameterized
   String sortModeLabel(SortMode mode) => switch (mode) {

@@ -10,6 +10,7 @@ import 'package:asian_mart_app/presentation/checkout/checkout_page.dart';
 import 'package:asian_mart_app/presentation/home/home_tab.dart';
 import 'package:asian_mart_app/presentation/product_detail/product_detail_page.dart';
 import 'package:asian_mart_app/presentation/product_list/product_list_page.dart';
+import 'package:asian_mart_app/presentation/profile/address_manage_page.dart';
 import 'package:asian_mart_app/presentation/profile/profile_tab.dart';
 import 'package:asian_mart_app/presentation/settings/language_settings_page.dart';
 import 'package:asian_mart_app/presentation/wishlist/wishlist_tab.dart';
@@ -115,6 +116,102 @@ class _StorefrontShellState extends State<StorefrontShell> {
     );
   }
 
+  Future<void> _openAddressManage() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AnimatedBuilder(
+          animation: widget.controller,
+          builder: (context, __) => AddressManagePage(
+            addresses: widget.controller.addresses,
+            isLoading: widget.controller.profileLoading,
+            errorMessage: widget.controller.profileError,
+            onRefresh: widget.controller.loadProfile,
+            onAddAddress: ({
+              required addressName,
+              required zipCode,
+              required address1,
+              required address2,
+              required isDefault,
+            }) {
+              return widget.controller.addAddress(
+                addressName: addressName,
+                zipCode: zipCode,
+                address1: address1,
+                address2: address2,
+                isDefault: isDefault,
+              );
+            },
+            onSetDefault: (addressId) async {
+              final error =
+                  await widget.controller.setDefaultAddress(addressId);
+              if (error != null && mounted) {
+                _showSnack(error);
+              }
+            },
+            onDeleteAddress: (addressId) async {
+              final error = await widget.controller.deleteAddress(addressId);
+              if (error != null && mounted) {
+                _showSnack(error);
+              }
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openWishlist() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (routeContext) => AnimatedBuilder(
+          animation: widget.controller,
+          builder: (context, __) => WishlistTab(
+            isAuthenticated: widget.controller.isAuthenticated,
+            isLoading: widget.controller.wishlistLoading,
+            isLoadingMore: widget.controller.wishlistLoadingMore,
+            hasMore: widget.controller.wishlisthasMore,
+            errorMessage: widget.controller.wishlistError,
+            items: widget.controller.wishlistItems,
+            totalCount: widget.controller.wishlistTotalCount,
+            onRequireLogin: _openAuthPage,
+            onRefresh: widget.controller.loadWishlist,
+            onRemove: (productId) => _handleWishlistToggle(productId),
+            onAddToCart: (productId) async {
+              final product = widget.controller.findProduct(productId);
+              if (product == null) {
+                _showSnack('상품 정보를 찾을 수 없습니다.');
+                return;
+              }
+              await _handleAddToCart(product);
+            },
+            onOpenProduct: (productId) async {
+              final cached = widget.controller.findProduct(productId);
+              if (cached != null) {
+                _showProduct(cached);
+                return;
+              }
+              try {
+                final detail =
+                    await widget.controller.loadProductDetail(productId);
+                if (!mounted) return;
+                _showProduct(detail);
+              } catch (_) {
+                _showSnack('상품 정보를 찾을 수 없습니다.');
+              }
+            },
+            onLoadMore: widget.controller.loadMoreWishlists,
+            onBack: () => Navigator.of(routeContext).pop(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openOrderInquiry() {
+    final l10n = AppLocalizations.of(context);
+    _showSnack(l10n.comingSoon);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -150,7 +247,7 @@ class _StorefrontShellState extends State<StorefrontShell> {
                 ]);
               },
               onOpenAuth: _openAuthPage,
-              onProfileTap: () => setState(() => _currentIndex = 4),
+              onProfileTap: () => setState(() => _currentIndex = 3),
               onCartTap: () => setState(() => _currentIndex = 2),
               onOpenLanguageSettings: () {
                 Navigator.of(context).push(
@@ -255,78 +352,16 @@ class _StorefrontShellState extends State<StorefrontShell> {
                 );
               },
             ),
-            WishlistTab(
-              isAuthenticated: widget.controller.isAuthenticated,
-              isLoading: widget.controller.wishlistLoading,
-              isLoadingMore: widget.controller.wishlistLoadingMore,
-              hasMore: widget.controller.wishlisthasMore,
-              errorMessage: widget.controller.wishlistError,
-              items: widget.controller.wishlistItems,
-              totalCount: widget.controller.wishlistTotalCount,
-              onRequireLogin: _openAuthPage,
-              onRefresh: widget.controller.loadWishlist,
-              onRemove: (productId) => _handleWishlistToggle(productId),
-              onAddToCart: (productId) async {
-                final product = widget.controller.findProduct(productId);
-                if (product == null) {
-                  _showSnack('상품 정보를 찾을 수 없습니다.');
-                  return;
-                }
-                await _handleAddToCart(product);
-              },
-              onOpenProduct: (productId) async {
-                final cached = widget.controller.findProduct(productId);
-                if (cached != null) {
-                  _showProduct(cached);
-                  return;
-                }
-                try {
-                  final detail = await widget.controller.loadProductDetail(productId);
-                  if (!mounted) return;
-                  _showProduct(detail);
-                } catch (_) {
-                  _showSnack('상품 정보를 찾을 수 없습니다.');
-                }
-              },
-              onLoadMore: widget.controller.loadMoreWishlists,
-            ),
             ProfileTab(
               isAuthenticated: widget.controller.isAuthenticated,
               user: widget.controller.currentUser,
-              addresses: widget.controller.addresses,
-              isLoading: widget.controller.profileLoading,
-              errorMessage: widget.controller.profileError,
               onRequireLogin: _openAuthPage,
               onRefresh: widget.controller.loadProfile,
               onLogout: widget.controller.logout,
-              onAddAddress: ({
-                required addressName,
-                required zipCode,
-                required address1,
-                required address2,
-                required isDefault,
-              }) {
-                return widget.controller.addAddress(
-                  addressName: addressName,
-                  zipCode: zipCode,
-                  address1: address1,
-                  address2: address2,
-                  isDefault: isDefault,
-                );
-              },
-              onSetDefault: (addressId) async {
-                final error =
-                    await widget.controller.setDefaultAddress(addressId);
-                if (error != null && mounted) {
-                  _showSnack(error);
-                }
-              },
-              onDeleteAddress: (addressId) async {
-                final error = await widget.controller.deleteAddress(addressId);
-                if (error != null && mounted) {
-                  _showSnack(error);
-                }
-              },
+              onOpenAddressManage: _openAddressManage,
+              onOpenWishlist: _openWishlist,
+              onOpenCart: () => setState(() => _currentIndex = 2),
+              onOpenOrderInquiry: _openOrderInquiry,
             ),
           ];
 
@@ -366,11 +401,6 @@ class _StorefrontShellState extends State<StorefrontShell> {
                     child: const Icon(Icons.shopping_bag_rounded),
                   ),
                   label: l10n.navCart,
-                ),
-                NavigationDestination(
-                  icon: const Icon(Icons.favorite_border_rounded),
-                  selectedIcon: const Icon(Icons.favorite_rounded),
-                  label: l10n.navWishlist,
                 ),
                 NavigationDestination(
                   icon: const Icon(Icons.person_outline_rounded),
