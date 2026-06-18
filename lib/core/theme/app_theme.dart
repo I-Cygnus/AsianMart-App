@@ -11,6 +11,8 @@ class AppTheme {
   // ── Backgrounds ───────────────────────────────────────────────────────────
   static const Color background = Color(0xFFF5F5F5);   // pure neutral (no blue)
   static const Color surface = Color(0xFFFFFFFF);
+  static const Color sectionRecommend = primaryMuted;
+  static const Color sectionPopular = Color(0xFFFFF8E7);
 
   // ── Text ──────────────────────────────────────────────────────────────────
   static const Color textPrimary = Color(0xFF1A1A1A);

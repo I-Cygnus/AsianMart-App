@@ -7,7 +7,7 @@ class WishlistItem {
     required this.sellingPrice,
     required this.productStatus,
     required this.inventoryStatus,
-    required this.imageUrl,
+    required this.thumbnailUrl,
     required this.createdAt,
   });
 
@@ -18,7 +18,7 @@ class WishlistItem {
   final double sellingPrice;
   final String productStatus;
   final String inventoryStatus;
-  final String? imageUrl;
+  final String? thumbnailUrl;
   final DateTime createdAt;
 
   bool get isAvailable =>
@@ -35,7 +35,7 @@ class WishlistItem {
       sellingPrice: (json['sellingPrice'] as num?)?.toDouble() ?? 0,
       productStatus: json['productStatus'] as String? ?? 'STOPPED',
       inventoryStatus: json['inventoryStatus'] as String? ?? 'OUT_OF_STOCK',
-      imageUrl: json['mainImageUrl'] as String?,
+      thumbnailUrl: json['thumbnailUrl'] as String?,
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
     );
