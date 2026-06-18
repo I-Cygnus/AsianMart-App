@@ -189,8 +189,8 @@ class AppController extends ChangeNotifier {
     notifyListeners();
     try {
       final results = await Future.wait([
-        _apiClient.fetchRecommendedProducts(),
-        _apiClient.fetchPopularProducts(),
+        _apiClient.fetchRecommendedProducts(languageCode: languageCode),
+        _apiClient.fetchPopularProducts(languageCode: languageCode),
       ]);
       _recommendedProducts = results[0];
       _popularProducts = results[1];

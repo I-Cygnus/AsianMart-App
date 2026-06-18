@@ -4,7 +4,6 @@ import 'package:asian_mart_app/core/l10n/app_localizations.dart';
 import 'package:asian_mart_app/core/state/app_controller.dart';
 import 'package:asian_mart_app/core/state/app_scope.dart';
 import 'package:asian_mart_app/domain/entities/product.dart';
-import 'package:asian_mart_app/domain/enums/sort_mode.dart';
 import 'package:asian_mart_app/presentation/auth/auth_page.dart';
 import 'package:asian_mart_app/presentation/cart/cart_tab.dart';
 import 'package:asian_mart_app/presentation/checkout/checkout_page.dart';
@@ -26,31 +25,6 @@ class StorefrontShell extends StatefulWidget {
 
 class _StorefrontShellState extends State<StorefrontShell> {
   int _currentIndex = 0;
-  String _searchQuery = '';
-  SortMode _sortMode = SortMode.latest;
-
-  List<Product> get _filteredProducts {
-    final query = _searchQuery.trim().toLowerCase();
-    final items = widget.controller.products.where((product) {
-      if (query.isEmpty) {
-        return true;
-      }
-      return product.name.toLowerCase().contains(query) ||
-          product.description.toLowerCase().contains(query);
-    }).toList();
-
-    switch (_sortMode) {
-      case SortMode.recommended:
-        items.sort((a, b) => b.discountPercent.compareTo(a.discountPercent));
-      case SortMode.latest:
-        items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      case SortMode.lowPrice:
-        items.sort((a, b) => a.sellingPrice.compareTo(b.sellingPrice));
-      case SortMode.highPrice:
-        items.sort((a, b) => b.sellingPrice.compareTo(a.sellingPrice));
-    }
-    return items;
-  }
 
   @override
   void initState() {
@@ -152,21 +126,23 @@ class _StorefrontShellState extends State<StorefrontShell> {
         builder: (context, _) {
           final pages = <Widget>[
             HomeTab(
-              products: _filteredProducts,
               recommendedProducts: widget.controller.recommendedProducts,
               popularProducts: widget.controller.popularProducts,
-              isLoading: widget.controller.productsLoading,
               isHomeSectionsLoading: widget.controller.homeSectionsLoading,
-              errorMessage: widget.controller.productsError,
               homeSectionsError: widget.controller.homeSectionsError,
-              searchQuery: _searchQuery,
-              sortMode: _sortMode,
               currentUserName: widget.controller.currentUser?.name,
               isAuthenticated: widget.controller.isAuthenticated,
               wishlistIds: widget.controller.wishlistedProductIds,
               cartCount: widget.controller.cartItemCount,
-              onSearchChanged: (value) => setState(() => _searchQuery = value),
-              onSortChanged: (mode) => setState(() => _sortMode = mode),
+              onSearch: (keyword) async {
+                await widget.controller.applyProductFilters(
+                  keyword: keyword,
+                  sort: widget.controller.listSort,
+                );
+                if (mounted) {
+                  setState(() => _currentIndex = 1);
+                }
+              },
               onRefresh: () async {
                 await Future.wait([
                   widget.controller.loadProducts(),

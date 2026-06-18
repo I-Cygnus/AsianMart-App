@@ -104,8 +104,13 @@ class ApiClient {
     );
   }
 
-  Future<List<Product>> fetchRecommendedProducts() async {
-    final response = await _send('GET', '/api/products/recommend');
+  Future<List<Product>> fetchRecommendedProducts({String? languageCode}) async {
+    final Map<String, String> query = {};
+
+    if (languageCode != null) {
+      query['languageCode'] = languageCode;
+    }
+    final response = await _send('GET', '/api/products/recommend', query: query);
     final body = _asMap(response.data);
     final content = body['products'] as List<dynamic>? ?? const [];
     final products = content
@@ -116,8 +121,13 @@ class ApiClient {
     return products;
   }
 
-  Future<List<Product>> fetchPopularProducts() async {
-    final response = await _send('GET', '/api/products/popular');
+  Future<List<Product>> fetchPopularProducts({String? languageCode}) async {
+    final Map<String, String> query = {};
+
+    if (languageCode != null) {
+      query['languageCode'] = languageCode;
+    }
+    final response = await _send('GET', '/api/products/popular', query: query);
     final body = _asMap(response.data);
     final content = body['products'] as List<dynamic>? ?? const [];
     final products = content
