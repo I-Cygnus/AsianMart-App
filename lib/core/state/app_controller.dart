@@ -35,10 +35,14 @@ class AppController extends ChangeNotifier {
   bool _profileLoading = false;
 
   String? _productsError;
+  String? _homeSectionsError;
   String? _cartError;
   String? _profileError;
 
   List<Product> _products = const [];
+  List<Product> _recommendedProducts = const [];
+  List<Product> _popularProducts = const [];
+  bool _homeSectionsLoading = false;
   List<CartEntry> _cartItems = const [];
   List<WishlistItem> _wishlistItems = const [];
   List<Address> _addresses = const [];
@@ -75,6 +79,10 @@ class AppController extends ChangeNotifier {
   bool get profileLoading => _profileLoading;
 
   String? get productsError => _productsError;
+  String? get homeSectionsError => _homeSectionsError;
+  bool get homeSectionsLoading => _homeSectionsLoading;
+  List<Product> get recommendedProducts => _recommendedProducts;
+  List<Product> get popularProducts => _popularProducts;
   String? get cartError => _cartError;
   String? get profileError => _profileError;
 
@@ -127,7 +135,12 @@ class AppController extends ChangeNotifier {
   }
 
   Product? findProduct(int productId) {
-    for (final product in _products) {
+    for (final product in [
+      ..._products,
+      ..._recommendedProducts,
+      ..._popularProducts,
+      ..._listProducts,
+    ]) {
       if (product.id == productId) {
         return product;
       }
@@ -148,6 +161,7 @@ class AppController extends ChangeNotifier {
 
     await Future.wait([
       loadProducts(),
+      loadHomeSections(),
       loadCategories(),
       refreshProductList(),
       loadCart(),
@@ -163,9 +177,29 @@ class AppController extends ChangeNotifier {
     _languageCode = code;
     await Future.wait([
       loadProducts(),
+      loadHomeSections(),
       refreshProductList(),
       loadWishlist()
     ]);
+  }
+
+  Future<void> loadHomeSections() async {
+    _homeSectionsLoading = true;
+    _homeSectionsError = null;
+    notifyListeners();
+    try {
+      final results = await Future.wait([
+        _apiClient.fetchRecommendedProducts(languageCode: languageCode),
+        _apiClient.fetchPopularProducts(languageCode: languageCode),
+      ]);
+      _recommendedProducts = results[0];
+      _popularProducts = results[1];
+    } catch (error) {
+      _homeSectionsError = _messageOf(error);
+    } finally {
+      _homeSectionsLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> loadProducts() async {

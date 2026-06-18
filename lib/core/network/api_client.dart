@@ -104,6 +104,40 @@ class ApiClient {
     );
   }
 
+  Future<List<Product>> fetchRecommendedProducts({String? languageCode}) async {
+    final Map<String, String> query = {};
+
+    if (languageCode != null) {
+      query['languageCode'] = languageCode;
+    }
+    final response = await _send('GET', '/api/products/recommend', query: query);
+    final body = _asMap(response.data);
+    final content = body['products'] as List<dynamic>? ?? const [];
+    final products = content
+        .whereType<Map<String, dynamic>>()
+        .map(Product.fromJson)
+        .toList();
+      
+    return products;
+  }
+
+  Future<List<Product>> fetchPopularProducts({String? languageCode}) async {
+    final Map<String, String> query = {};
+
+    if (languageCode != null) {
+      query['languageCode'] = languageCode;
+    }
+    final response = await _send('GET', '/api/products/popular', query: query);
+    final body = _asMap(response.data);
+    final content = body['products'] as List<dynamic>? ?? const [];
+    final products = content
+        .whereType<Map<String, dynamic>>()
+        .map(Product.fromJson)
+        .toList();
+      
+    return products;
+  }
+
   Future<String> login({
     required String email,
     required String password,
