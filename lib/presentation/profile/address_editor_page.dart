@@ -7,6 +7,7 @@ class AddressEditorPage extends StatefulWidget {
   const AddressEditorPage({
     super.key,
     required this.onSubmit,
+    this.showDefaultToggle = true,
   });
 
   final Future<String?> Function({
@@ -16,6 +17,7 @@ class AddressEditorPage extends StatefulWidget {
     required String address2,
     required bool isDefault,
   }) onSubmit;
+  final bool showDefaultToggle;
 
   @override
   State<AddressEditorPage> createState() => _AddressEditorPageState();
@@ -75,7 +77,7 @@ class _AddressEditorPageState extends State<AddressEditorPage> {
       zipCode: _zipCode!,
       address1: _address1!,
       address2: _address2Controller.text.trim(),
-      isDefault: _isDefault,
+      isDefault: widget.showDefaultToggle ? _isDefault : true,
     );
     if (!mounted) return;
     setState(() => _saving = false);
@@ -136,12 +138,13 @@ class _AddressEditorPageState extends State<AddressEditorPage> {
             ),
             const SizedBox(height: 24),
 
-            // ── 기본 배송지 ──────────────────────────────────────
-            _DefaultAddressTile(
-              value: _isDefault,
-              onChanged: (v) => setState(() => _isDefault = v),
-            ),
-            const SizedBox(height: 28),
+            if (widget.showDefaultToggle) ...[
+              _DefaultAddressTile(
+                value: _isDefault,
+                onChanged: (v) => setState(() => _isDefault = v),
+              ),
+              const SizedBox(height: 28),
+            ],
 
             // ── 저장 버튼 ────────────────────────────────────────
             FilledButton(

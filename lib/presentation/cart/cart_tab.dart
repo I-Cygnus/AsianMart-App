@@ -49,10 +49,10 @@ class CartTab extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
 
     Widget body;
-    if (!isAuthenticated) {
-      body = _AuthPrompt(onRequireLogin: onRequireLogin);
-    } else if (isLoading && items.isEmpty) {
+    if (isLoading && items.isEmpty) {
       body = const Center(child: CircularProgressIndicator());
+    } else if (!isAuthenticated && items.isEmpty) {
+      body = _AuthPrompt(onRequireLogin: onRequireLogin);
     } else if (errorMessage != null && items.isEmpty) {
       body = Center(
         child: Padding(

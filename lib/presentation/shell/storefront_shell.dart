@@ -42,10 +42,6 @@ class _StorefrontShellState extends State<StorefrontShell> {
   }
 
   Future<void> _openCheckout() async {
-    if (!widget.controller.isAuthenticated) {
-      await _openAuthPage();
-      return;
-    }
     if (widget.controller.selectedCartItems.isEmpty) {
       _showSnack('주문할 상품을 먼저 선택해 주세요.');
       return;

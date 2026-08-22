@@ -16,11 +16,26 @@ class CheckoutPage extends StatefulWidget {
 
 class _CheckoutPageState extends State<CheckoutPage> {
   final _noteController = TextEditingController();
+  late final TextEditingController _recipientNameController;
+  late final TextEditingController _recipientPhoneController;
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _recipientNameController = TextEditingController(
+      text: widget.controller.currentUser?.name ?? '',
+    );
+    _recipientPhoneController = TextEditingController(
+      text: widget.controller.currentUser?.phone ?? '',
+    );
+  }
 
   @override
   void dispose() {
     _noteController.dispose();
+    _recipientNameController.dispose();
+    _recipientPhoneController.dispose();
     super.dispose();
   }
 
@@ -28,13 +43,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
     setState(() => _submitting = true);
     final error = await controller.placeOrder(
       requestMessage: _noteController.text,
+      recipientName: _recipientNameController.text,
+      recipientPhone: _recipientPhoneController.text,
     );
     if (!mounted) {
       return;
     }
     setState(() => _submitting = false);
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
       return;
     }
     await showDialog<void>(
@@ -59,14 +77,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = widget.controller;
     final l10n = AppLocalizations.of(context);
-    final address = controller.defaultAddress;
-    final items = controller.selectedCartItems;
 
     return AnimatedBuilder(
-      animation: controller,
+      animation: widget.controller,
       builder: (context, _) {
+        final controller = widget.controller;
+        final address = controller.defaultAddress;
+        final items = controller.selectedCartItems;
+
         return Scaffold(
           appBar: AppBar(title: Text(l10n.checkoutTitle)),
           body: ListView(
@@ -79,6 +98,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     await Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => AddressEditorPage(
+                          showDefaultToggle: controller.isAuthenticated,
                           onSubmit: ({
                             required addressName,
                             required zipCode,
@@ -98,7 +118,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       ),
                     );
                   },
-                  child: Text(l10n.changeAddress),
+                  child: Text(
+                    address == null ? l10n.addAddress : l10n.changeAddress,
+                  ),
                 ),
                 child: address == null
                     ? Text(
@@ -125,6 +147,32 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           ),
                         ],
                       ),
+              ),
+              const SizedBox(height: 12),
+              _Section(
+                title: '받는 분 정보',
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _recipientNameController,
+                      textInputAction: TextInputAction.next,
+                      decoration: InputDecoration(
+                        labelText: l10n.nameLabel,
+                        prefixIcon: const Icon(Icons.person_outline_rounded),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _recipientPhoneController,
+                      keyboardType: TextInputType.phone,
+                      textInputAction: TextInputAction.next,
+                      decoration: InputDecoration(
+                        labelText: l10n.phoneLabel,
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 12),
               _Section(

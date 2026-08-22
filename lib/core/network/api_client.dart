@@ -40,31 +40,25 @@ class ApiClient {
     return [];
   }
 
-  Future<Product> fetchProduct({
-    required int productId,
-    String? languageCode
-  }) async {
+  Future<Product> fetchProduct(
+      {required int productId, String? languageCode}) async {
     final Map<String, String> query = {};
     if (languageCode != null) {
       query['languageCode'] = languageCode;
     }
-    final response = await _send(
-      'GET',
-      '/api/products/$productId',
-      query: query
-    );
+    final response =
+        await _send('GET', '/api/products/$productId', query: query);
     return Product.fromJson(_asMap(response.data));
   }
 
-  Future<PagedProducts> fetchProducts({
-    num? categoryId,
-    String? keyword,
-    String? searchField,
-    num? page,
-    num? size,
-    String? sort,
-    String? languageCode
-  }) async {
+  Future<PagedProducts> fetchProducts(
+      {num? categoryId,
+      String? keyword,
+      String? searchField,
+      num? page,
+      num? size,
+      String? sort,
+      String? languageCode}) async {
     final Map<String, String> query = {};
     if (categoryId != null) {
       query['categoryId'] = '$categoryId';
@@ -110,14 +104,15 @@ class ApiClient {
     if (languageCode != null) {
       query['languageCode'] = languageCode;
     }
-    final response = await _send('GET', '/api/products/recommend', query: query);
+    final response =
+        await _send('GET', '/api/products/recommend', query: query);
     final body = _asMap(response.data);
     final content = body['products'] as List<dynamic>? ?? const [];
     final products = content
         .whereType<Map<String, dynamic>>()
         .map(Product.fromJson)
         .toList();
-      
+
     return products;
   }
 
@@ -134,7 +129,7 @@ class ApiClient {
         .whereType<Map<String, dynamic>>()
         .map(Product.fromJson)
         .toList();
-      
+
     return products;
   }
 
@@ -343,13 +338,12 @@ class ApiClient {
     return _cartSnapshotFromResponse(response.data);
   }
 
-  Future<PagedWishlistItems> fetchWishlists({
-    String? accessToken,
-    num? page,
-    num? size,
-    String? sort,
-    String? languageCode
-  }) async {
+  Future<PagedWishlistItems> fetchWishlists(
+      {String? accessToken,
+      num? page,
+      num? size,
+      String? sort,
+      String? languageCode}) async {
     final Map<String, String> query = {};
 
     query['page'] = page != null ? '$page' : '0';
@@ -363,7 +357,8 @@ class ApiClient {
       query['languageCode'] = languageCode;
     }
 
-    final response = await _send('GET', '/api/wishlist/page', query: query, accessToken: accessToken);
+    final response = await _send('GET', '/api/wishlist/page',
+        query: query, accessToken: accessToken);
     final body = _asMap(response.data);
     final content = body['content'] as List<dynamic>? ?? const [];
     final items = content
@@ -392,23 +387,34 @@ class ApiClient {
   }
 
   Future<void> placeOrder({
-    required String accessToken,
-    required int userId,
+    String? accessToken,
+    String? guestToken,
+    int? userId,
     required List<Map<String, int>> products,
     required num totalAmount,
     required String requestMessage,
+    required String recipientName,
+    required String recipientPhone,
+    required String recipientAddress,
   }) async {
+    final isGuest = guestToken != null &&
+        guestToken.isNotEmpty &&
+        (accessToken == null || accessToken.isEmpty);
     await _send(
       'POST',
-      '/order/place',
+      isGuest ? '/api/order/place/guest' : '/api/order/place',
       accessToken: accessToken,
+      guestToken: guestToken,
       body: {
-        'userId': userId,
+        if (userId != null) 'userId': userId,
         'totalAmount': totalAmount,
         'payAmount': totalAmount,
         'requestMessage': requestMessage,
         'orderStatus': 'PENDING',
         'paymentType': 'BANK_TRANSFER',
+        'recipientName': recipientName,
+        'recipientPhone': recipientPhone,
+        'recipientAddress': recipientAddress,
         'products': products
             .map((item) => {
                   'productId': item['productId'],
@@ -446,7 +452,8 @@ class ApiClient {
     final request = await _httpClient.openUrl(method, uri);
     request.headers.set(HttpHeaders.acceptHeader, 'application/json');
     if (accessToken != null && accessToken.isNotEmpty) {
-      request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $accessToken');
+      request.headers
+          .set(HttpHeaders.authorizationHeader, 'Bearer $accessToken');
     }
     if (guestToken != null && guestToken.isNotEmpty) {
       request.headers.set('X-Guest-Token', guestToken);

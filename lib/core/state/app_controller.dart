@@ -46,6 +46,7 @@ class AppController extends ChangeNotifier {
   List<CartEntry> _cartItems = const [];
   List<WishlistItem> _wishlistItems = const [];
   List<Address> _addresses = const [];
+  Address? _guestAddress;
   AppUser? _currentUser;
 
   // ── '상품' 탭(서버 주도 검색/필터/정렬/페이지네이션) 상태 ──────────────────
@@ -126,6 +127,9 @@ class AppController extends ChangeNotifier {
       );
 
   Address? get defaultAddress {
+    if (!isAuthenticated) {
+      return _guestAddress;
+    }
     for (final address in _addresses) {
       if (address.isDefault) {
         return address;
@@ -352,13 +356,12 @@ class AppController extends ChangeNotifier {
     final keyword = _listKeyword.trim();
     try {
       final result = await _apiClient.fetchProducts(
-        categoryId: _listCategoryId,
-        keyword: keyword.isEmpty ? null : keyword,
-        page: _listPage,
-        size: _listPageSize,
-        sort: _listSort.apiSort,
-        languageCode: _languageCode
-      );
+          categoryId: _listCategoryId,
+          keyword: keyword.isEmpty ? null : keyword,
+          page: _listPage,
+          size: _listPageSize,
+          sort: _listSort.apiSort,
+          languageCode: _languageCode);
       _listProducts =
           reset ? result.items : [..._listProducts, ...result.items];
       if (reset) {
@@ -384,8 +387,7 @@ class AppController extends ChangeNotifier {
   Future<Product> loadProductDetail(int productId) async {
     try {
       return await _apiClient.fetchProduct(
-          productId: productId,
-          languageCode: languageCode);
+          productId: productId, languageCode: languageCode);
     } catch (error) {
       throw ApiException(_messageOf(error));
     }
@@ -425,12 +427,11 @@ class AppController extends ChangeNotifier {
 
     try {
       final result = await _apiClient.fetchWishlists(
-        accessToken: _accessToken,
-        page: _wishlistPage,
-        size: _wishlistPageSize,
-        sort: _listSort.apiSort,
-        languageCode: languageCode
-      );
+          accessToken: _accessToken,
+          page: _wishlistPage,
+          size: _wishlistPageSize,
+          sort: _listSort.apiSort,
+          languageCode: languageCode);
       _wishlistItems =
           reset ? result.items : [..._wishlistItems, ...result.items];
       if (reset) {
@@ -514,6 +515,7 @@ class AppController extends ChangeNotifier {
     _wishlistItems = const [];
     _wishlistTotalCount = 0;
     _addresses = const [];
+    _guestAddress = null;
     _currentUser = null;
     await _storage.delete(key: _tokenKey);
     notifyListeners();
@@ -529,6 +531,7 @@ class AppController extends ChangeNotifier {
       final guestCartItems = _snapshotGuestCartItems();
       _accessToken = await _apiClient.login(email: email, password: password);
       await _storage.write(key: _tokenKey, value: _accessToken);
+      _guestAddress = null;
       final mergeFailures = await _mergeGuestCartIntoMemberCart(guestCartItems);
       await Future.wait([
         loadCart(),
@@ -565,6 +568,7 @@ class AppController extends ChangeNotifier {
       );
       _accessToken = await _apiClient.login(email: email, password: password);
       await _storage.write(key: _tokenKey, value: _accessToken);
+      _guestAddress = null;
       final mergeFailures = await _mergeGuestCartIntoMemberCart(guestCartItems);
       await Future.wait([
         loadCart(),
@@ -590,6 +594,7 @@ class AppController extends ChangeNotifier {
     _wishlistItems = const [];
     _wishlistTotalCount = 0;
     _addresses = const [];
+    _guestAddress = null;
     _currentUser = null;
     notifyListeners();
     await _storage.delete(key: _tokenKey);
@@ -705,7 +710,16 @@ class AppController extends ChangeNotifier {
     required bool isDefault,
   }) async {
     if (!isAuthenticated) {
-      return '로그인이 필요합니다.';
+      _guestAddress = Address(
+        id: 0,
+        addressName: addressName,
+        zipCode: zipCode,
+        address1: address1,
+        address2: address2,
+        isDefault: true,
+      );
+      notifyListeners();
+      return null;
     }
     try {
       await _apiClient.addAddress(
@@ -755,25 +769,37 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<String?> placeOrder({required String requestMessage}) async {
-    if (!isAuthenticated || _currentUser == null) {
-      return '로그인이 필요합니다.';
-    }
+  Future<String?> placeOrder({
+    required String requestMessage,
+    required String recipientName,
+    required String recipientPhone,
+  }) async {
     if (selectedCartItems.isEmpty) {
       return '선택된 상품이 없습니다.';
     }
-    if (defaultAddress == null) {
-      return '기본 배송지를 먼저 등록해 주세요.';
+    final address = defaultAddress;
+    if (address == null) {
+      return '배송지를 먼저 등록해 주세요.';
+    }
+    if (recipientName.trim().isEmpty) {
+      return '받는 분 이름을 입력해 주세요.';
+    }
+    if (recipientPhone.trim().isEmpty) {
+      return '받는 분 전화번호를 입력해 주세요.';
     }
 
     final totalAmount = _normalizeCurrency(selectedCartTotal);
 
     try {
       await _apiClient.placeOrder(
-        accessToken: _accessToken!,
-        userId: _currentUser!.id,
+        accessToken: _accessToken,
+        guestToken: isAuthenticated ? null : _guestToken,
+        userId: _currentUser?.id,
         requestMessage: requestMessage.trim(),
         totalAmount: totalAmount,
+        recipientName: recipientName.trim(),
+        recipientPhone: recipientPhone.trim(),
+        recipientAddress: address.fullAddress,
         products: selectedCartItems
             .map((item) => {
                   'productId': item.productId,
@@ -807,7 +833,8 @@ class AppController extends ChangeNotifier {
     return List<CartEntry>.from(_cartItems);
   }
 
-  Future<List<int>> _mergeGuestCartIntoMemberCart(List<CartEntry> guestCartItems) async {
+  Future<List<int>> _mergeGuestCartIntoMemberCart(
+      List<CartEntry> guestCartItems) async {
     if (guestCartItems.isEmpty || !isAuthenticated) {
       _guestToken = null;
       return const [];
