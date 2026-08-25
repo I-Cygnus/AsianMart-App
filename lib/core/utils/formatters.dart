@@ -5,3 +5,6 @@ final _priceFormatter = NumberFormat('#,###', 'ko_KR');
 String formatPrice(double value) => '${_priceFormatter.format(value.round())}원';
 
 String formatDate(DateTime value) => DateFormat('yyyy.MM.dd').format(value);
+
+String formatDateTime(DateTime value) =>
+    DateFormat('yyyy.MM.dd HH:mm').format(value);

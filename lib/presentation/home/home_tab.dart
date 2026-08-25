@@ -87,6 +87,7 @@ class HomeTab extends StatefulWidget {
     required this.onToggleWishlist,
     required this.onAddToCart,
     required this.onOpenLanguageSettings,
+    required this.onOpenGuestOrderInquiry,
     required this.rootCategories,
     required this.onCategoryTap,
   });
@@ -105,6 +106,7 @@ class HomeTab extends StatefulWidget {
   final VoidCallback onProfileTap;
   final VoidCallback onCartTap;
   final VoidCallback onOpenLanguageSettings;
+  final VoidCallback onOpenGuestOrderInquiry;
   final ValueChanged<Product> onProductTap;
   final ValueChanged<int> onToggleWishlist;
   final ValueChanged<Product> onAddToCart;
@@ -151,6 +153,7 @@ class _HomeTabState extends State<HomeTab> {
             onOpenAuth: widget.onOpenAuth,
             onProfileTap: widget.onProfileTap,
             onOpenLanguageSettings: widget.onOpenLanguageSettings,
+            onOpenGuestOrderInquiry: widget.onOpenGuestOrderInquiry,
           ),
         ),
         Expanded(child: _buildBody(l10n)),
@@ -262,6 +265,7 @@ class _HomeActions extends StatelessWidget {
     required this.onOpenAuth,
     required this.onProfileTap,
     required this.onOpenLanguageSettings,
+    required this.onOpenGuestOrderInquiry,
   });
 
   final int cartCount;
@@ -271,6 +275,7 @@ class _HomeActions extends StatelessWidget {
   final VoidCallback onOpenAuth;
   final VoidCallback onProfileTap;
   final VoidCallback onOpenLanguageSettings;
+  final VoidCallback onOpenGuestOrderInquiry;
 
   @override
   Widget build(BuildContext context) {
@@ -279,6 +284,10 @@ class _HomeActions extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _HeaderIconBtn(icon: Icons.notifications_outlined, onTap: () {}),
+        _HeaderIconBtn(
+          icon: Icons.receipt_long_outlined,
+          onTap: onOpenGuestOrderInquiry,
+        ),
         Stack(
           clipBehavior: Clip.none,
           children: [

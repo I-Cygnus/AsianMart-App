@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:asian_mart_app/domain/enums/delivery_status.dart';
+import 'package:asian_mart_app/domain/enums/order_status.dart';
 import 'package:asian_mart_app/domain/enums/sort_mode.dart';
 
 class AppLocalizations {
@@ -526,6 +528,278 @@ class AppLocalizations {
       'zh': '订单查询',
       'ja': '注文履歴',
     },
+    'orderInquiryEmpty': {
+      'ko': '주문 내역이 없습니다',
+      'en': 'No orders yet',
+      'th': 'ยังไม่มีคำสั่งซื้อ',
+      'vi': 'Chưa có đơn hàng',
+      'zh': '暂无订单',
+      'ja': '注文履歴がありません',
+    },
+    'orderInquiryEmptyDesc': {
+      'ko': '주문한 상품이 있으면 여기에서 진행 상태를 확인할 수 있습니다.',
+      'en': 'Placed orders will appear here with their status.',
+      'th': 'คำสั่งซื้อของคุณจะแสดงที่นี่พร้อมสถานะ',
+      'vi': 'Đơn hàng đã đặt sẽ xuất hiện ở đây kèm trạng thái.',
+      'zh': '已下订单会在此显示进度。',
+      'ja': '注文した商品の進行状況をここで確認できます。',
+    },
+    'orderInquiryAuthDesc': {
+      'ko': '주문 내역은 로그인 후 확인할 수 있어요.',
+      'en': 'Sign in to view your order history.',
+      'th': 'เข้าสู่ระบบเพื่อดูประวัติคำสั่งซื้อ',
+      'vi': 'Đăng nhập để xem lịch sử đơn hàng.',
+      'zh': '登录后可查看订单记录。',
+      'ja': 'ログインすると注文履歴を確認できます。',
+    },
+    'orderDetailTitle': {
+      'ko': '주문 상세',
+      'en': 'Order detail',
+      'th': 'รายละเอียดคำสั่งซื้อ',
+      'vi': 'Chi tiết đơn hàng',
+      'zh': '订单详情',
+      'ja': '注文詳細',
+    },
+    'orderNumber': {
+      'ko': '주문번호',
+      'en': 'Order no.',
+      'th': 'หมายเลขคำสั่งซื้อ',
+      'vi': 'Mã đơn hàng',
+      'zh': '订单号',
+      'ja': '注文番号',
+    },
+    'orderDateLabel': {
+      'ko': '주문일시',
+      'en': 'Ordered at',
+      'th': 'วันที่สั่งซื้อ',
+      'vi': 'Ngày đặt',
+      'zh': '下单时间',
+      'ja': '注文日時',
+    },
+    'orderItems': {
+      'ko': '주문 상품',
+      'en': 'Items',
+      'th': 'สินค้าที่สั่ง',
+      'vi': 'Sản phẩm',
+      'zh': '订购商品',
+      'ja': '注文商品',
+    },
+    'recipientInfo': {
+      'ko': '받는 분 정보',
+      'en': 'Recipient',
+      'th': 'ผู้รับ',
+      'vi': 'Người nhận',
+      'zh': '收件人信息',
+      'ja': 'お受け取りの方',
+    },
+    'noOrderNote': {
+      'ko': '요청사항이 없습니다',
+      'en': 'No order note',
+      'th': 'ไม่มีหมายเหตุ',
+      'vi': 'Không có ghi chú',
+      'zh': '没有备注',
+      'ja': 'ご要望はありません',
+    },
+    'orderPlacedTitle': {
+      'ko': '주문이 접수되었습니다',
+      'en': 'Order placed',
+      'th': 'รับคำสั่งซื้อแล้ว',
+      'vi': 'Đã nhận đơn hàng',
+      'zh': '订单已提交',
+      'ja': '注文を受け付けました',
+    },
+    'orderPlacedDesc': {
+      'ko': '주문조회에서 진행 상태를 확인할 수 있습니다.',
+      'en': 'You can check the status in Order history.',
+      'th': 'ตรวจสอบสถานะได้ที่ประวัติคำสั่งซื้อ',
+      'vi': 'Bạn có thể xem trạng thái trong lịch sử đơn hàng.',
+      'zh': '可在订单查询中查看进度。',
+      'ja': '注文履歴で進行状況を確認できます。',
+    },
+    'orderStatusPlaced': {
+      'ko': '주문 접수',
+      'en': 'Placed',
+      'th': 'รับคำสั่งซื้อแล้ว',
+      'vi': 'Đã đặt',
+      'zh': '已下单',
+      'ja': '注文受付',
+    },
+    'orderStatusPaymentPending': {
+      'ko': '입금 대기',
+      'en': 'Awaiting payment',
+      'th': 'รอชำระเงิน',
+      'vi': 'Chờ thanh toán',
+      'zh': '待付款',
+      'ja': '入金待ち',
+    },
+    'orderStatusConfirmed': {
+      'ko': '주문 확인',
+      'en': 'Confirmed',
+      'th': 'ยืนยันแล้ว',
+      'vi': 'Đã xác nhận',
+      'zh': '已确认',
+      'ja': '注文確認',
+    },
+    'orderStatusCancelled': {
+      'ko': '주문 취소',
+      'en': 'Cancelled',
+      'th': 'ยกเลิกแล้ว',
+      'vi': 'Đã hủy',
+      'zh': '已取消',
+      'ja': 'キャンセル',
+    },
+    'deliveryAccepted': {
+      'ko': '배송 접수',
+      'en': 'Accepted',
+      'th': 'รับจัดส่งแล้ว',
+      'vi': 'Đã tiếp nhận',
+      'zh': '已受理配送',
+      'ja': '配送受付',
+    },
+    'deliveryPreparing': {
+      'ko': '상품 준비중',
+      'en': 'Preparing',
+      'th': 'กำลังจัดเตรียม',
+      'vi': 'Đang chuẩn bị',
+      'zh': '准备中',
+      'ja': '商品準備中',
+    },
+    'deliveryInTransit': {
+      'ko': '배송중',
+      'en': 'In transit',
+      'th': 'กำลังจัดส่ง',
+      'vi': 'Đang giao',
+      'zh': '配送中',
+      'ja': '配送中',
+    },
+    'deliveryDelivered': {
+      'ko': '배송 완료',
+      'en': 'Delivered',
+      'th': 'จัดส่งแล้ว',
+      'vi': 'Đã giao',
+      'zh': '已送达',
+      'ja': '配送完了',
+    },
+    'orderCompleteTitle': {
+      'ko': '주문 완료',
+      'en': 'Order complete',
+      'th': 'สั่งซื้อสำเร็จ',
+      'vi': 'Đặt hàng thành công',
+      'zh': '下单成功',
+      'ja': '注文完了',
+    },
+    'bankAccountTitle': {
+      'ko': '입금 계좌',
+      'en': 'Bank account',
+      'th': 'บัญชีโอนเงิน',
+      'vi': 'Tài khoản chuyển khoản',
+      'zh': '转账账户',
+      'ja': '振込口座',
+    },
+    'depositGuide': {
+      'ko': '아래 계좌로 입금해 주시면 확인 후 주문이 진행됩니다.',
+      'en': 'Transfer the amount to this account to proceed.',
+      'th': 'โอนเงินตามบัญชีนี้เพื่อดำเนินการต่อ',
+      'vi': 'Chuyển khoản vào tài khoản này để tiếp tục đơn hàng.',
+      'zh': '请向以下账户转账，确认后将继续处理订单。',
+      'ja': '下記口座へご入金後、確認でき次第注文を進めます。',
+    },
+    'bankName': {
+      'ko': '은행',
+      'en': 'Bank',
+      'th': 'ธนาคาร',
+      'vi': 'Ngân hàng',
+      'zh': '银行',
+      'ja': '銀行',
+    },
+    'accountNumber': {
+      'ko': '계좌',
+      'en': 'Account',
+      'th': 'เลขบัญชี',
+      'vi': 'Số tài khoản',
+      'zh': '账号',
+      'ja': '口座番号',
+    },
+    'accountHolder': {
+      'ko': '예금주',
+      'en': 'Holder',
+      'th': 'ชื่อบัญชี',
+      'vi': 'Chủ tài khoản',
+      'zh': '户名',
+      'ja': '口座名義',
+    },
+    'copyAccount': {
+      'ko': '복사',
+      'en': 'Copy',
+      'th': 'คัดลอก',
+      'vi': 'Sao chép',
+      'zh': '复制',
+      'ja': 'コピー',
+    },
+    'accountCopied': {
+      'ko': '계좌번호가 복사되었습니다.',
+      'en': 'Account number copied.',
+      'th': 'คัดลอกเลขบัญชีแล้ว',
+      'vi': 'Đã sao chép số tài khoản.',
+      'zh': '已复制账号。',
+      'ja': '口座番号をコピーしました。',
+    },
+    'depositAmount': {
+      'ko': '입금 금액',
+      'en': 'Amount due',
+      'th': 'ยอดที่ต้องโอน',
+      'vi': 'Số tiền cần chuyển',
+      'zh': '应转金额',
+      'ja': 'ご入金金額',
+    },
+    'continueShopping': {
+      'ko': '쇼핑 계속하기',
+      'en': 'Continue shopping',
+      'th': 'เลือกซื้อต่อ',
+      'vi': 'Tiếp tục mua sắm',
+      'zh': '继续购物',
+      'ja': '買い物を続ける',
+    },
+    'guestOrderInquiry': {
+      'ko': '비회원 주문조회',
+      'en': 'Guest order lookup',
+      'th': 'ค้นหาคำสั่งซื้อแขก',
+      'vi': 'Tra cứu đơn khách',
+      'zh': '非会员订单查询',
+      'ja': 'ゲスト注文照会',
+    },
+    'guestOrderInquiryDesc': {
+      'ko': '주문번호와 주문 시 입력한 전화번호로 주문 상태를 확인할 수 있습니다.',
+      'en': 'Look up your order with the order number and phone number.',
+      'th': 'ค้นหาคำสั่งซื้อด้วยหมายเลขคำสั่งซื้อและเบอร์โทร',
+      'vi': 'Tra cứu đơn bằng mã đơn và số điện thoại.',
+      'zh': '可通过订单号和下单时填写的电话查询订单。',
+      'ja': '注文番号とご注文時の電話番号で確認できます。',
+    },
+    'lookupOrder': {
+      'ko': '주문 조회',
+      'en': 'Look up',
+      'th': 'ค้นหา',
+      'vi': 'Tra cứu',
+      'zh': '查询',
+      'ja': '照会する',
+    },
+    'lookingUpOrder': {
+      'ko': '조회 중...',
+      'en': 'Looking up...',
+      'th': 'กำลังค้นหา...',
+      'vi': 'Đang tra cứu...',
+      'zh': '查询中...',
+      'ja': '照会中...',
+    },
+    'guestOrderNotFound': {
+      'ko': '일치하는 주문을 찾지 못했습니다. 주문번호와 전화번호를 확인해 주세요.',
+      'en': 'No matching order found. Check the order number and phone.',
+      'th': 'ไม่พบคำสั่งซื้อ ตรวจสอบหมายเลขและเบอร์โทร',
+      'vi': 'Không tìm thấy đơn hàng. Kiểm tra mã đơn và số điện thoại.',
+      'zh': '未找到匹配订单，请核对订单号和电话。',
+      'ja': '該当する注文が見つかりません。番号をご確認ください。',
+    },
     'comingSoon': {
       'ko': '준비 중입니다.',
       'en': 'Coming soon.',
@@ -613,7 +887,47 @@ class AppLocalizations {
   String get authRequiredDesc => _s('authRequiredDesc');
   String get profileGuestDesc => _s('profileGuestDesc');
   String get orderInquiry => _s('orderInquiry');
+  String get orderInquiryEmpty => _s('orderInquiryEmpty');
+  String get orderInquiryEmptyDesc => _s('orderInquiryEmptyDesc');
+  String get orderInquiryAuthDesc => _s('orderInquiryAuthDesc');
+  String get orderDetailTitle => _s('orderDetailTitle');
+  String get orderNumber => _s('orderNumber');
+  String get orderDateLabel => _s('orderDateLabel');
+  String get orderItems => _s('orderItems');
+  String get recipientInfo => _s('recipientInfo');
+  String get noOrderNote => _s('noOrderNote');
+  String get orderPlacedTitle => _s('orderPlacedTitle');
+  String get orderPlacedDesc => _s('orderPlacedDesc');
+  String get orderCompleteTitle => _s('orderCompleteTitle');
+  String get bankAccountTitle => _s('bankAccountTitle');
+  String get depositGuide => _s('depositGuide');
+  String get bankName => _s('bankName');
+  String get accountNumber => _s('accountNumber');
+  String get accountHolder => _s('accountHolder');
+  String get copyAccount => _s('copyAccount');
+  String get accountCopied => _s('accountCopied');
+  String get depositAmount => _s('depositAmount');
+  String get continueShopping => _s('continueShopping');
+  String get guestOrderInquiry => _s('guestOrderInquiry');
+  String get guestOrderInquiryDesc => _s('guestOrderInquiryDesc');
+  String get lookupOrder => _s('lookupOrder');
+  String get lookingUpOrder => _s('lookingUpOrder');
+  String get guestOrderNotFound => _s('guestOrderNotFound');
   String get comingSoon => _s('comingSoon');
+
+  String orderStatusLabel(OrderStatus status) => switch (status) {
+        OrderStatus.placed => _s('orderStatusPlaced'),
+        OrderStatus.paymentPending => _s('orderStatusPaymentPending'),
+        OrderStatus.confirmed => _s('orderStatusConfirmed'),
+        OrderStatus.cancelled => _s('orderStatusCancelled'),
+      };
+
+  String deliveryStatusLabel(DeliveryStatus status) => switch (status) {
+        DeliveryStatus.accepted => _s('deliveryAccepted'),
+        DeliveryStatus.preparing => _s('deliveryPreparing'),
+        DeliveryStatus.inTransit => _s('deliveryInTransit'),
+        DeliveryStatus.delivered => _s('deliveryDelivered'),
+      };
 
   // Parameterized
   String sortModeLabel(SortMode mode) => switch (mode) {

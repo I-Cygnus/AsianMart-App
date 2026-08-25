@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:asian_mart_app/core/network/api_client.dart';
@@ -5,9 +7,13 @@ import 'package:asian_mart_app/core/network/api_exception.dart';
 import 'package:asian_mart_app/domain/entities/address.dart';
 import 'package:asian_mart_app/domain/entities/app_user.dart';
 import 'package:asian_mart_app/domain/entities/cart_entry.dart';
+import 'package:asian_mart_app/domain/entities/order_detail.dart';
+import 'package:asian_mart_app/domain/entities/order_list_item.dart';
+import 'package:asian_mart_app/domain/entities/place_order_result.dart';
 import 'package:asian_mart_app/domain/entities/product.dart';
 import 'package:asian_mart_app/domain/entities/product_category.dart';
 import 'package:asian_mart_app/domain/entities/wishlist_item.dart';
+import 'package:asian_mart_app/domain/enums/order_status.dart';
 import 'package:asian_mart_app/domain/enums/sort_mode.dart';
 
 class AppController extends ChangeNotifier {
@@ -17,6 +23,7 @@ class AppController extends ChangeNotifier {
   final FlutterSecureStorage _storage;
 
   static const _tokenKey = 'access_token';
+  static const _guestOrdersKey = 'guest_order_receipts';
 
   String? _accessToken;
   String? _guestToken;
@@ -26,6 +33,7 @@ class AppController extends ChangeNotifier {
 
   static const int _listPageSize = 20;
   static const int _wishlistPageSize = 10;
+  static const int _ordersPageSize = 10;
 
   bool _bootstrapped = false;
   bool _productsLoading = false;
@@ -73,6 +81,17 @@ class AppController extends ChangeNotifier {
   bool _wishlistHasMore = true;
   int _wishlistTotalCount = 0;
 
+  List<OrderListItem> _orders = const [];
+  bool _ordersLoading = false;
+  bool _ordersLoadingMore = false;
+  String? _ordersError;
+  int _ordersPage = 0;
+  bool _ordersHasMore = true;
+  int _ordersTotalCount = 0;
+  OrderDetail? _orderDetail;
+  bool _orderDetailLoading = false;
+  String? _orderDetailError;
+
   bool get bootstrapped => _bootstrapped;
   bool get productsLoading => _productsLoading;
   bool get cartLoading => _cartLoading;
@@ -108,6 +127,15 @@ class AppController extends ChangeNotifier {
   bool get wishlisthasMore => _wishlistHasMore;
   int get wishlistTotalCount => _wishlistTotalCount;
   String? get wishlistError => _wishlistError;
+  List<OrderListItem> get orders => _orders;
+  bool get ordersLoading => _ordersLoading;
+  bool get ordersLoadingMore => _ordersLoadingMore;
+  bool get ordersHasMore => _ordersHasMore;
+  int get ordersTotalCount => _ordersTotalCount;
+  String? get ordersError => _ordersError;
+  OrderDetail? get orderDetail => _orderDetail;
+  bool get orderDetailLoading => _orderDetailLoading;
+  String? get orderDetailError => _orderDetailError;
   List<Address> get addresses => _addresses;
   AppUser? get currentUser => _currentUser;
   bool get isAuthenticated => _accessToken != null && _accessToken!.isNotEmpty;
@@ -514,6 +542,7 @@ class AppController extends ChangeNotifier {
     _accessToken = null;
     _wishlistItems = const [];
     _wishlistTotalCount = 0;
+    _clearOrderState();
     _addresses = const [];
     _guestAddress = null;
     _currentUser = null;
@@ -593,6 +622,7 @@ class AppController extends ChangeNotifier {
     _guestToken = null;
     _wishlistItems = const [];
     _wishlistTotalCount = 0;
+    _clearOrderState();
     _addresses = const [];
     _guestAddress = null;
     _currentUser = null;
@@ -769,31 +799,148 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<String?> placeOrder({
+  void _clearOrderState() {
+    _orders = const [];
+    _ordersError = null;
+    _ordersPage = 0;
+    _ordersHasMore = true;
+    _ordersTotalCount = 0;
+    _orderDetail = null;
+    _orderDetailError = null;
+  }
+
+  Future<void> _fetchOrdersPage({required bool reset}) async {
+    if (reset) {
+      _ordersLoading = true;
+      _ordersError = null;
+      _ordersPage = 0;
+      _ordersHasMore = true;
+    } else {
+      _ordersLoadingMore = true;
+    }
+    notifyListeners();
+
+    try {
+      _currentUser ??= await _apiClient.fetchMe(_accessToken!);
+      final result = await _apiClient.fetchOrders(
+        accessToken: _accessToken!,
+        userId: (_currentUser?.id ?? 0) > 0 ? _currentUser!.id : null,
+        page: _ordersPage,
+        size: _ordersPageSize,
+        sort: 'orderDate,desc',
+      );
+      _orders = reset ? result.items : [..._orders, ...result.items];
+      if (reset) {
+        _ordersTotalCount = result.totalElements;
+      }
+      _ordersHasMore = !result.isLast;
+      if (_ordersHasMore) {
+        _ordersPage += 1;
+      }
+    } catch (error) {
+      if (error is ApiException && error.statusCode == 401) {
+        await _clearPersistedToken();
+        return;
+      }
+      _ordersError = _messageOf(error);
+      if (reset) {
+        _orders = const [];
+        _ordersTotalCount = 0;
+      }
+    } finally {
+      _ordersLoading = false;
+      _ordersLoadingMore = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadOrders() async {
+    if (!isAuthenticated) {
+      _clearOrderState();
+      notifyListeners();
+      return;
+    }
+    await _fetchOrdersPage(reset: true);
+  }
+
+  Future<void> loadMoreOrders() async {
+    if (_ordersLoading || _ordersLoadingMore || !_ordersHasMore) {
+      return;
+    }
+    await _fetchOrdersPage(reset: false);
+  }
+
+  Future<void> loadOrderDetail(
+    int orderId, {
+    String? orderNo,
+    String? recipientPhone,
+  }) async {
+    _orderDetailLoading = true;
+    _orderDetailError = null;
+    notifyListeners();
+    try {
+      _orderDetail = await _apiClient.fetchOrder(
+        accessToken: _accessToken,
+        guestToken: isAuthenticated ? null : _guestToken,
+        orderId: orderId,
+      );
+    } catch (error) {
+      if (error is ApiException && error.statusCode == 401 && isAuthenticated) {
+        await _clearPersistedToken();
+        return;
+      }
+      final local = await findGuestReceipt(
+        orderId: orderId,
+        orderNo: orderNo,
+        recipientPhone: recipientPhone,
+      );
+      if (local != null) {
+        _orderDetail = local;
+        _orderDetailError = null;
+      } else {
+        _orderDetail = null;
+        _orderDetailError = _messageOf(error);
+      }
+    } finally {
+      _orderDetailLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<PlaceOrderResult> placeOrder({
     required String requestMessage,
     required String recipientName,
     required String recipientPhone,
+    String? guestEmail,
   }) async {
     if (selectedCartItems.isEmpty) {
-      return '선택된 상품이 없습니다.';
+      return const PlaceOrderResult(error: '선택된 상품이 없습니다.');
     }
     final address = defaultAddress;
     if (address == null) {
-      return '배송지를 먼저 등록해 주세요.';
+      return const PlaceOrderResult(error: '배송지를 먼저 등록해 주세요.');
     }
     if (recipientName.trim().isEmpty) {
-      return '받는 분 이름을 입력해 주세요.';
+      return const PlaceOrderResult(error: '받는 분 이름을 입력해 주세요.');
     }
     if (recipientPhone.trim().isEmpty) {
-      return '받는 분 전화번호를 입력해 주세요.';
+      return const PlaceOrderResult(error: '받는 분 전화번호를 입력해 주세요.');
     }
 
     final totalAmount = _normalizeCurrency(selectedCartTotal);
+    final snapshot = _buildOrderSnapshot(
+      requestMessage: requestMessage.trim(),
+      recipientName: recipientName.trim(),
+      recipientPhone: recipientPhone.trim(),
+      recipientAddress: address.fullAddress,
+      paymentAmount: totalAmount,
+    );
 
     try {
-      await _apiClient.placeOrder(
+      final orderId = await _apiClient.placeOrder(
         accessToken: _accessToken,
         guestToken: isAuthenticated ? null : _guestToken,
+        guestEmail: guestEmail,
         userId: _currentUser?.id,
         requestMessage: requestMessage.trim(),
         totalAmount: totalAmount,
@@ -807,16 +954,203 @@ class AppController extends ChangeNotifier {
                 })
             .toList(),
       );
-      final snapshot = await _apiClient.deleteSelectedCartItems(
+      final cartSnapshot = await _apiClient.deleteSelectedCartItems(
         accessToken: _accessToken,
         guestToken: isAuthenticated ? null : _guestToken,
       );
-      _cartItems = snapshot.items;
+      _cartItems = cartSnapshot.items;
+
+      var order = snapshot.copyWith(orderId: orderId ?? snapshot.orderId);
+      if (orderId != null && orderId > 0) {
+        try {
+          order = await _apiClient.fetchOrder(
+            accessToken: _accessToken,
+            guestToken: isAuthenticated ? null : _guestToken,
+            orderId: orderId,
+          );
+        } catch (_) {}
+        if (!isAuthenticated) {
+          await _saveGuestReceipt(order);
+        }
+      } else if (!isAuthenticated) {
+        await _saveGuestReceipt(order);
+      }
+
       notifyListeners();
-      return null;
+      return PlaceOrderResult(orderId: order.orderId, order: order);
     } catch (error) {
-      return _messageOf(error);
+      return PlaceOrderResult(error: _messageOf(error));
     }
+  }
+
+  OrderDetail _buildOrderSnapshot({
+    required String requestMessage,
+    required String recipientName,
+    required String recipientPhone,
+    required String recipientAddress,
+    required double paymentAmount,
+  }) {
+    return OrderDetail(
+      orderId: 0,
+      orderNo: '',
+      orderStatus: OrderStatus.paymentPending,
+      orderDate: DateTime.now(),
+      paymentAmount: paymentAmount,
+      paymentType: 'BANK_TRANSFER',
+      requestMessage: requestMessage,
+      recipientName: recipientName,
+      recipientPhone: recipientPhone,
+      recipientAddress: recipientAddress,
+      products: selectedCartItems
+          .map(
+            (item) => OrderProduct(
+              productId: item.productId,
+              productName: item.productName,
+              productDescription: '',
+              price: item.sellingPrice,
+              quantity: item.quantity,
+              thumbnailUrl: item.imageUrl,
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Future<List<OrderDetail>> _loadGuestReceipts() async {
+    final raw = await _storage.read(key: _guestOrdersKey);
+    if (raw == null || raw.isEmpty) {
+      return const [];
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) {
+        return const [];
+      }
+      return decoded
+          .whereType<Map<String, dynamic>>()
+          .map((json) => OrderDetail.fromJson(
+                json,
+                orderId: (json['orderId'] as num?)?.toInt() ?? 0,
+              ))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _saveGuestReceipt(OrderDetail order) async {
+    final existing = await _loadGuestReceipts();
+    final next = [
+      order,
+      ...existing.where((item) {
+        if (order.orderId > 0 && item.orderId == order.orderId) {
+          return false;
+        }
+        if (order.orderNo.isNotEmpty && item.orderNo == order.orderNo) {
+          return false;
+        }
+        return true;
+      }),
+    ].take(20).toList();
+    await _storage.write(
+      key: _guestOrdersKey,
+      value: jsonEncode(next.map((item) => item.toJson()).toList()),
+    );
+  }
+
+  String _digitsOnly(String value) =>
+      value.replaceAll(RegExp(r'[^0-9]'), '');
+
+  Future<({List<OrderListItem> items, String? error})> lookupGuestOrders({
+    required String orderNo,
+    required String recipientPhone,
+  }) async {
+    final trimmedNo = orderNo.trim();
+    final trimmedPhone = recipientPhone.trim();
+    if (trimmedNo.isEmpty || trimmedPhone.isEmpty) {
+      return (items: const <OrderListItem>[], error: '주문번호와 전화번호를 입력해 주세요.');
+    }
+
+    final localMatches = (await _loadGuestReceipts()).where((order) {
+      final noMatches = order.orderNo.isNotEmpty &&
+          order.orderNo.toLowerCase() == trimmedNo.toLowerCase();
+      final idMatches =
+          order.orderId > 0 && '${order.orderId}' == trimmedNo;
+      final phoneMatches =
+          _digitsOnly(order.recipientPhone) == _digitsOnly(trimmedPhone);
+      return (noMatches || idMatches) && phoneMatches;
+    }).toList();
+
+    try {
+      final result = await _apiClient.fetchOrders(
+        accessToken: _accessToken,
+        guestToken: isAuthenticated ? null : _guestToken,
+        keyword: trimmedNo,
+        searchField: 'ORDER_NO',
+        page: 0,
+        size: 20,
+        sort: 'orderDate,desc',
+      );
+      if (result.items.isNotEmpty) {
+        return (items: result.items, error: null);
+      }
+    } on ApiException catch (error) {
+      if (error.statusCode != 401 && error.statusCode != 403) {
+        if (localMatches.isEmpty) {
+          return (items: const <OrderListItem>[], error: _messageOf(error));
+        }
+      }
+    } catch (error) {
+      if (localMatches.isEmpty) {
+        return (items: const <OrderListItem>[], error: _messageOf(error));
+      }
+    }
+
+    if (localMatches.isEmpty) {
+      return (
+        items: const <OrderListItem>[],
+        error: null,
+      );
+    }
+
+    return (
+      items: localMatches
+          .map(
+            (order) => OrderListItem(
+              orderId: order.orderId,
+              orderNo: order.orderNo.isEmpty ? '${order.orderId}' : order.orderNo,
+              orderStatus: order.orderStatus,
+              orderDate: order.orderDate,
+              paymentAmount: order.paymentAmount,
+              deliveryStatus: order.deliveryStatus,
+            ),
+          )
+          .toList(),
+      error: null,
+    );
+  }
+
+  Future<OrderDetail?> findGuestReceipt({
+    required int orderId,
+    String? orderNo,
+    String? recipientPhone,
+  }) async {
+    final receipts = await _loadGuestReceipts();
+    for (final order in receipts) {
+      final idMatches = orderId > 0 && order.orderId == orderId;
+      final noMatches = orderNo != null &&
+          orderNo.isNotEmpty &&
+          order.orderNo == orderNo;
+      if (idMatches || noMatches) {
+        if (recipientPhone == null || recipientPhone.isEmpty) {
+          return order;
+        }
+        if (_digitsOnly(order.recipientPhone) == _digitsOnly(recipientPhone)) {
+          return order;
+        }
+      }
+    }
+    return null;
   }
 
   String _messageOf(Object error) {

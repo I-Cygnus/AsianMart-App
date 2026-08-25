@@ -1,10 +1,27 @@
 enum OrderStatus {
-  pendingPayment(0.2),
-  preparing(0.45),
-  shipping(0.72),
-  delivered(1.0);
+  placed,
+  paymentPending,
+  confirmed,
+  cancelled;
 
-  const OrderStatus(this.progress);
+  String get apiValue => switch (this) {
+        OrderStatus.placed => 'PLACED',
+        OrderStatus.paymentPending => 'PAYMENT_PENDING',
+        OrderStatus.confirmed => 'CONFIRMED',
+        OrderStatus.cancelled => 'CANCELLED',
+      };
 
-  final double progress;
+  static OrderStatus fromApi(String? value) {
+    switch (value) {
+      case 'PAYMENT_PENDING':
+        return OrderStatus.paymentPending;
+      case 'CONFIRMED':
+        return OrderStatus.confirmed;
+      case 'CANCELLED':
+        return OrderStatus.cancelled;
+      case 'PLACED':
+      default:
+        return OrderStatus.placed;
+    }
+  }
 }

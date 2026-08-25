@@ -41,7 +41,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Future<void> _submit(AppController controller) async {
     setState(() => _submitting = true);
-    final error = await controller.placeOrder(
+    final result = await controller.placeOrder(
       requestMessage: _noteController.text,
       recipientName: _recipientNameController.text,
       recipientPhone: _recipientPhoneController.text,
@@ -50,29 +50,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
       return;
     }
     setState(() => _submitting = false);
-    if (error != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error)));
+    if (result.error != null || result.order == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.error ?? '주문 처리에 실패했습니다.')),
+      );
       return;
     }
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('주문이 접수되었습니다'),
-        content: const Text(
-          '백엔드의 주문 생성 API와 연결되었습니다. 현재 백엔드에는 주문 조회 API가 없어 주문 목록 탭은 제거했습니다.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('확인'),
-          ),
-        ],
-      ),
-    );
-    if (mounted) {
-      Navigator.of(context).pop();
-    }
+    Navigator.of(context).pop(result.order);
   }
 
   @override

@@ -3,11 +3,17 @@ import 'package:flutter/services.dart';
 import 'package:asian_mart_app/core/l10n/app_localizations.dart';
 import 'package:asian_mart_app/core/state/app_controller.dart';
 import 'package:asian_mart_app/core/state/app_scope.dart';
+import 'package:asian_mart_app/domain/entities/order_detail.dart';
+import 'package:asian_mart_app/domain/entities/order_list_item.dart';
 import 'package:asian_mart_app/domain/entities/product.dart';
 import 'package:asian_mart_app/presentation/auth/auth_page.dart';
 import 'package:asian_mart_app/presentation/cart/cart_tab.dart';
 import 'package:asian_mart_app/presentation/checkout/checkout_page.dart';
 import 'package:asian_mart_app/presentation/home/home_tab.dart';
+import 'package:asian_mart_app/presentation/orders/guest_order_inquiry_page.dart';
+import 'package:asian_mart_app/presentation/orders/order_complete_page.dart';
+import 'package:asian_mart_app/presentation/orders/order_detail_page.dart';
+import 'package:asian_mart_app/presentation/orders/order_inquiry_page.dart';
 import 'package:asian_mart_app/presentation/product_detail/product_detail_page.dart';
 import 'package:asian_mart_app/presentation/product_list/product_list_page.dart';
 import 'package:asian_mart_app/presentation/profile/address_manage_page.dart';
@@ -46,9 +52,28 @@ class _StorefrontShellState extends State<StorefrontShell> {
       _showSnack('주문할 상품을 먼저 선택해 주세요.');
       return;
     }
+    final order = await Navigator.of(context).push<OrderDetail>(
+      MaterialPageRoute<OrderDetail>(
+        builder: (_) => CheckoutPage(controller: widget.controller),
+      ),
+    );
+    if (!mounted || order == null) {
+      return;
+    }
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => CheckoutPage(controller: widget.controller),
+        builder: (_) => OrderCompletePage(
+          order: order,
+          onContinueShopping: () => Navigator.of(context).pop(),
+          onViewOrders: () {
+            Navigator.of(context).pop();
+            if (widget.controller.isAuthenticated) {
+              _openOrderInquiry();
+            } else {
+              _openGuestOrderInquiry();
+            }
+          },
+        ),
       ),
     );
   }
@@ -203,9 +228,91 @@ class _StorefrontShellState extends State<StorefrontShell> {
     );
   }
 
-  void _openOrderInquiry() {
-    final l10n = AppLocalizations.of(context);
-    _showSnack(l10n.comingSoon);
+  Future<void> _openOrderInquiry() async {
+    if (!widget.controller.isAuthenticated) {
+      await _openAuthPage();
+      if (!mounted || !widget.controller.isAuthenticated) {
+        return;
+      }
+    }
+    widget.controller.loadOrders();
+    if (!mounted) {
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (routeContext) => AnimatedBuilder(
+          animation: widget.controller,
+          builder: (context, __) => OrderInquiryPage(
+            isAuthenticated: widget.controller.isAuthenticated,
+            isLoading: widget.controller.ordersLoading,
+            isLoadingMore: widget.controller.ordersLoadingMore,
+            hasMore: widget.controller.ordersHasMore,
+            errorMessage: widget.controller.ordersError,
+            items: widget.controller.orders,
+            totalCount: widget.controller.ordersTotalCount,
+            onRequireLogin: _openAuthPage,
+            onRefresh: widget.controller.loadOrders,
+            onLoadMore: widget.controller.loadMoreOrders,
+            onOpenOrder: _openOrderDetail,
+            onBack: () => Navigator.of(routeContext).pop(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openGuestOrderInquiry() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (routeContext) => GuestOrderInquiryPage(
+          onLookup: widget.controller.lookupGuestOrders,
+          onOpenOrder: _openOrderDetail,
+          onBack: () => Navigator.of(routeContext).pop(),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openOrderDetail(OrderListItem order) async {
+    widget.controller.loadOrderDetail(
+      order.orderId,
+      orderNo: order.orderNo,
+    );
+    if (!mounted) {
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AnimatedBuilder(
+          animation: widget.controller,
+          builder: (context, __) => OrderDetailPage(
+            isLoading: widget.controller.orderDetailLoading,
+            errorMessage: widget.controller.orderDetailError,
+            order: widget.controller.orderDetail,
+            onRefresh: () => widget.controller.loadOrderDetail(
+              order.orderId,
+              orderNo: order.orderNo,
+            ),
+            onOpenProduct: (productId) async {
+              final cached = widget.controller.findProduct(productId);
+              if (cached != null) {
+                _showProduct(cached);
+                return;
+              }
+              try {
+                final detail =
+                    await widget.controller.loadProductDetail(productId);
+                if (!mounted) return;
+                _showProduct(detail);
+              } catch (_) {
+                _showSnack('상품 정보를 찾을 수 없습니다.');
+              }
+            },
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -252,6 +359,7 @@ class _StorefrontShellState extends State<StorefrontShell> {
                   ),
                 );
               },
+              onOpenGuestOrderInquiry: _openGuestOrderInquiry,
               onProductTap: _showProduct,
               onToggleWishlist: _handleWishlistToggle,
               onAddToCart: _handleAddToCart,

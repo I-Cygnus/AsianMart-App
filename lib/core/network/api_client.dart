@@ -7,6 +7,8 @@ import 'package:asian_mart_app/domain/entities/address.dart';
 import 'package:asian_mart_app/domain/entities/app_user.dart';
 import 'package:asian_mart_app/domain/entities/cart_entry.dart';
 import 'package:asian_mart_app/domain/entities/cart_snapshot.dart';
+import 'package:asian_mart_app/domain/entities/order_detail.dart';
+import 'package:asian_mart_app/domain/entities/order_list_item.dart';
 import 'package:asian_mart_app/domain/entities/product.dart';
 import 'package:asian_mart_app/domain/entities/product_category.dart';
 import 'package:asian_mart_app/domain/entities/wishlist_item.dart';
@@ -386,9 +388,74 @@ class ApiClient {
     );
   }
 
-  Future<void> placeOrder({
+  Future<PagedOrders> fetchOrders({
     String? accessToken,
     String? guestToken,
+    int? userId,
+    String? keyword,
+    String? searchField,
+    num? page,
+    num? size,
+    String? sort,
+  }) async {
+    final query = <String, String>{
+      'page': page != null ? '$page' : '0',
+      'size': size != null ? '$size' : '10',
+    };
+    if (userId != null) {
+      query['userId'] = '$userId';
+    }
+    if (keyword != null && keyword.isNotEmpty) {
+      query['keyword'] = keyword;
+    }
+    if (searchField != null && searchField.isNotEmpty) {
+      query['searchField'] = searchField;
+    }
+    if (sort != null && sort.isNotEmpty) {
+      query['sort'] = sort;
+    }
+
+    final response = await _send(
+      'GET',
+      '/api/order',
+      query: query,
+      accessToken: accessToken,
+      guestToken: guestToken,
+    );
+    final body = _asMap(response.data);
+    final content = body['content'] as List<dynamic>? ?? const [];
+    final items = content
+        .whereType<Map<String, dynamic>>()
+        .map(OrderListItem.fromJson)
+        .toList();
+
+    return PagedOrders(
+      items: items,
+      page: (body['number'] as num?)?.toInt() ?? (page?.toInt() ?? 0),
+      isLast: body['last'] as bool? ?? true,
+      totalElements: (body['totalElements'] as num?)?.toInt() ?? items.length,
+      totalPages: (body['totalPages'] as num?)?.toInt() ?? 1,
+    );
+  }
+
+  Future<OrderDetail> fetchOrder({
+    String? accessToken,
+    String? guestToken,
+    required int orderId,
+  }) async {
+    final response = await _send(
+      'GET',
+      '/api/order/$orderId',
+      accessToken: accessToken,
+      guestToken: guestToken,
+    );
+    return OrderDetail.fromJson(_asMap(response.data), orderId: orderId);
+  }
+
+  Future<int?> placeOrder({
+    String? accessToken,
+    String? guestToken,
+    String? guestEmail,
     int? userId,
     required List<Map<String, int>> products,
     required num totalAmount,
@@ -397,16 +464,16 @@ class ApiClient {
     required String recipientPhone,
     required String recipientAddress,
   }) async {
-    final isGuest = guestToken != null &&
-        guestToken.isNotEmpty &&
-        (accessToken == null || accessToken.isEmpty);
-    await _send(
+    final isGuest = accessToken == null || accessToken.isEmpty;
+    final response = await _send(
       'POST',
       isGuest ? '/api/order/place/guest' : '/api/order/place',
       accessToken: accessToken,
       guestToken: guestToken,
       body: {
         if (userId != null) 'userId': userId,
+        if (isGuest && guestEmail != null && guestEmail.isNotEmpty)
+          'guestEmail': guestEmail,
         'totalAmount': totalAmount,
         'payAmount': totalAmount,
         'requestMessage': requestMessage,
@@ -423,6 +490,27 @@ class ApiClient {
             .toList(),
       },
     );
+    return _orderIdFromResponse(response.data);
+  }
+
+  int? _orderIdFromResponse(Object? data) {
+    if (data is num) {
+      return data.toInt();
+    }
+    if (data is Map<String, dynamic>) {
+      for (final key in ['orderId', 'id', 'order_id']) {
+        final value = data[key];
+        if (value is num) {
+          return value.toInt();
+        }
+      }
+      for (final value in data.values) {
+        if (value is num) {
+          return value.toInt();
+        }
+      }
+    }
+    return null;
   }
 
   CartSnapshot _cartSnapshotFromResponse(Object? data) {
@@ -537,6 +625,22 @@ class PagedWishlistItems {
   });
 
   final List<WishlistItem> items;
+  final int page;
+  final bool isLast;
+  final int totalElements;
+  final int totalPages;
+}
+
+class PagedOrders {
+  const PagedOrders({
+    required this.items,
+    required this.page,
+    required this.isLast,
+    required this.totalElements,
+    required this.totalPages,
+  });
+
+  final List<OrderListItem> items;
   final int page;
   final bool isLast;
   final int totalElements;
